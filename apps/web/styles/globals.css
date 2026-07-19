@@ -1,0 +1,57 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+/*
+ * TribeOS semantic design tokens (dark-first).
+ * Source of truth: docs/design_tokens.md. Do not hardcode raw hex in components;
+ * consume these via the Tailwind theme (bg-background, text-muted, border-border, ...).
+ */
+:root {
+  /* Surfaces */
+  --background: #000000;
+  --surface: #111111;
+  --surface-raised: #18181b;
+  --card: #1f1f23;
+  --hover: #2a2a2f;
+  --border: #303036;
+  --divider: #3a3a40;
+  --input: #303036;
+  --ring: #f04e37;
+
+  /* Brand */
+  --primary: #f04e37;
+  --primary-hover: #d84531;
+  --primary-light: #ff6a54;
+  --primary-foreground: #ffffff;
+
+  /* Text / Foreground */
+  --foreground: #ffffff;
+  --foreground-secondary: #c9c9c9;
+  --muted: #8b8b8b;
+  --disabled: #666666;
+  --inverse: #000000;
+
+  /* Status */
+  --success: #22c55e;
+  --warning: #f59e0b;
+  --danger: #ef4444;
+  --destructive: #ef4444;
+  --info: #3b82f6;
+
+  /* Radius */
+  --radius-sm: 6px;
+  --radius-md: 10px;
+  --radius-lg: 14px;
+  --radius-xl: 18px;
+}
+
+@layer base {
+  * {
+    @apply border-border;
+  }
+
+  body {
+    @apply bg-background font-sans text-foreground antialiased;
+  }
+}
