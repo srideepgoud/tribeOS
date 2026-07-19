@@ -13,6 +13,7 @@ from app.domains.clients.router import router as clients_router
 from app.domains.cost_categories.router import router as cost_categories_router
 from app.domains.cost_items.router import router as cost_items_router
 from app.domains.events.router import router as events_router
+from app.domains.transactions.router import router as transactions_router
 from app.domains.vendor_work_orders.router import router as vendor_work_orders_router
 from app.domains.vendors.router import router as vendors_router
 
@@ -23,3 +24,4 @@ api_router.include_router(cost_categories_router)
 api_router.include_router(cost_items_router)
 api_router.include_router(vendors_router)
 api_router.include_router(vendor_work_orders_router)
+api_router.include_router(transactions_router)

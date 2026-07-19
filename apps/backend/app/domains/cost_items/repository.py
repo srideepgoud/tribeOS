@@ -4,6 +4,7 @@ from __future__ import annotations
 
 import uuid
 from collections.abc import Sequence
+from decimal import Decimal
 from typing import Any
 
 from sqlalchemy import func, or_, select
@@ -116,4 +117,9 @@ class CostItemRepository:
 
     async def add_version(self, version: CostItemVersion) -> None:
         self._session.add(version)
+        await self._session.flush()
+
+    async def set_actual_amount(self, item: CostItem, amount: Decimal | None) -> None:
+        """Persist system-maintained actual_amount (ADR 0008). No business logic."""
+        item.actual_amount = amount
         await self._session.flush()
