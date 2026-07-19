@@ -375,6 +375,7 @@ Many Transactions (Client Receipts)
 - `cost_item_id` (FK, Nullable)
 - `work_order_id` (FK, Nullable)
 - `client_invoice_id` (FK, Nullable)
+- `reverses_transaction_id` (FK → `transactions.id`, Nullable)
 - `transaction_type`
 - `payment_method`
 - `amount`
@@ -382,6 +383,21 @@ Many Transactions (Client Receipts)
 - `reference_number`
 - `status`
 - `remarks`
+
+**`reverses_transaction_id`**
+
+- UUID, nullable, self-referencing foreign key to `transactions.id`.
+- Stores the original transaction that this transaction reverses.
+- Null for normal (non-reversal) transactions.
+- Set only when `transaction_type = Reversal`.
+
+**Invariants (`reverses_transaction_id`)**
+
+- Nullable.
+- Self-referencing foreign key.
+- May only be populated when `transaction_type = Reversal`.
+- The original transaction cannot itself be a Reversal (`transaction_type ≠ Reversal`).
+- One original transaction may be reversed at most once (enforced in the service layer).
 
 **Transaction Types**
 

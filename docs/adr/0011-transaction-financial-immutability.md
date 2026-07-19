@@ -50,6 +50,8 @@ Reject illegal post-completion financial patches with `InvalidStateError` (`INVA
 - System-generated reversal amounts may be negative per `docs/business_rules.md`.
 - Approvals workflow for reversals remains deferred; Phase 7 may allow reversal with an explicit service path (seam for future Approvals).
 
+**Schema correction:** The `transactions` table includes a nullable self-referencing foreign key (`reverses_transaction_id`) to support the approved append-only reversal model. See `docs/db_schema.md` §11. Service-layer invariants: only Reversal rows set the FK; the original must not itself be a Reversal; an original may be reversed at most once.
+
 ### 3. Locked Finance Foundation decisions (Phase 7)
 
 | # | Topic | Locked decision |
