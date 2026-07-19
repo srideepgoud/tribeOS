@@ -24,3 +24,9 @@ Reusable prompt templates for working on TribeOS with AI assistants (Cursor, Cla
 | `10_test_generation.md` | Generating tests |
 | `11_release_checklist.md` | Pre-merge verification |
 | `12_implementation_plan.md` | Milestone planning before any code (plan → approve → build) |
+
+## Domain blueprint
+
+After Clients and Events, the reusable implementation pattern lives in
+[`docs/domain_template.md`](../docs/domain_template.md) (**Approved v1.0**).
+Use it together with the fullstack / backend / frontend prompts when adding a new domain.
