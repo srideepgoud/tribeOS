@@ -27,3 +27,4 @@ ADRs are immutable once accepted. To change a decision, add a new ADR that super
 | [0008](./0008-materialized-financial-values.md) | Materialized financial values on Cost Items | Accepted |
 | [0009](./0009-aggregate-ownership.md) | Aggregate ownership boundaries | Accepted |
 | [0010](./0010-cross-aggregate-validation.md) | Cross-aggregate validation | Accepted |
+| [0011](./0011-transaction-financial-immutability.md) | Transaction financial immutability & Phase 7 scope | Accepted |
