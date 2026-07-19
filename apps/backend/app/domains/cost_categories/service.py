@@ -12,6 +12,7 @@ from app.domains.cost_categories.models import CostCategory
 from app.domains.cost_categories.repository import CostCategoryRepository
 from app.domains.cost_categories.schemas import CostCategoryCreate, CostCategoryUpdate
 from app.domains.cost_categories.validators import normalize_cost_category_fields
+from app.domains.cost_items.repository import CostItemRepository
 from app.domains.events.repository import EventRepository
 from app.shared.errors import ConflictError, NotFoundError
 from app.shared.pagination import PageParams
@@ -85,11 +86,17 @@ class CostCategoryService:
     async def archive(self, category_id: uuid.UUID, *, actor: uuid.UUID | None = None) -> None:
         """Soft delete (archive only).
 
-        Deferred rule: "Categories cannot be deleted while Cost Items exist."
-        Enforced when the Cost Items module exists; until then there are no Cost
-        Items to block archival.
+        Categories cannot be deleted while non-archived Cost Items exist
+        (business_rules.md — Cost Category Rules).
         """
         category = await self.get(category_id)
+        item_count = await CostItemRepository(self._session).count_non_archived_by_category(
+            category_id
+        )
+        if item_count > 0:
+            raise ConflictError(
+                "Cannot archive Cost Category while non-archived Cost Items exist."
+            )
         if category.archived_at is None:
             category.archived_at = datetime.now(UTC)
             category.updated_by = actor

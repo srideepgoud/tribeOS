@@ -2,13 +2,14 @@
 
 import Link from "next/link";
 import { usePathname } from "next/navigation";
-import { CalendarDays, FolderTree, Users } from "lucide-react";
+import { CalendarDays, FolderTree, ListTree, Users } from "lucide-react";
 import { cn } from "@tribeos/ui";
 
 const NAV_ITEMS = [
   { href: "/clients", label: "Clients", icon: Users },
   { href: "/events", label: "Events", icon: CalendarDays },
   { href: "/cost-categories", label: "Cost Categories", icon: FolderTree },
+  { href: "/cost-items", label: "Cost Items", icon: ListTree },
 ] as const;
 
 export function SidebarNav() {
