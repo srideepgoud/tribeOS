@@ -18,6 +18,7 @@ from fastapi.responses import JSONResponse
 from starlette.exceptions import HTTPException as StarletteHTTPException
 
 from app.core.logging import get_logger
+from app.shared.errors import AppError
 
 logger = get_logger(__name__)
 
@@ -55,6 +56,13 @@ def register_error_handlers(app: FastAPI) -> None:
                 "One or more fields are invalid.",
                 jsonable_encoder(details),
             ),
+        )
+
+    @app.exception_handler(AppError)
+    async def app_error_handler(_request: Request, exc: AppError) -> JSONResponse:
+        return JSONResponse(
+            status_code=exc.status_code,
+            content=_error_body(exc.code, exc.message, exc.details),
         )
 
     @app.exception_handler(StarletteHTTPException)

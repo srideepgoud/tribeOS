@@ -1,9 +1,10 @@
+import { SidebarNav } from "./sidebar-nav";
 import { Wordmark } from "./wordmark";
 
 /**
- * Application sidebar (structural only). Fixed 280px on large screens, hidden
- * below the `lg` breakpoint. Business navigation items are intentionally NOT
- * included in this phase — the nav region is an empty structural placeholder.
+ * Application sidebar. Fixed 280px on large screens, hidden below the `lg`
+ * breakpoint. Navigation currently contains only the Clients entry; further
+ * entries are added as their business modules are built.
  */
 export function Sidebar() {
   return (
@@ -12,12 +13,8 @@ export function Sidebar() {
         <Wordmark />
       </div>
 
-      <nav
-        aria-label="Primary"
-        className="flex-1 overflow-y-auto p-4"
-        data-region="primary-navigation"
-      >
-        {/* Navigation items are added by business modules in later milestones. */}
+      <nav aria-label="Primary" className="flex-1 overflow-y-auto p-4" data-region="primary-navigation">
+        <SidebarNav />
       </nav>
 
       <div className="shrink-0 border-t border-border p-4" data-region="sidebar-footer">

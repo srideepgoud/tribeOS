@@ -18,9 +18,8 @@ from sqlalchemy.ext.asyncio import create_async_engine
 from app.core.config import get_settings
 from app.db.base import Base
 
-# Domain models must be imported here (from Milestone 1 onward) so that
-# Alembic autogenerate can see their tables, e.g.:
-#   from app.domains.clients import model as _clients_model  # noqa: F401
+# Domain models must be imported here so Alembic autogenerate sees their tables.
+from app.domains.clients import models as _clients_models  # noqa: F401
 
 config = context.config
 

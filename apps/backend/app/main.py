@@ -14,6 +14,7 @@ from fastapi import FastAPI, Request, Response
 
 from app.api import health
 from app.api.errors.handlers import register_error_handlers
+from app.api.routers import api_router
 from app.core.config import get_settings
 from app.core.logging import configure_logging
 
@@ -40,7 +41,9 @@ def create_app() -> FastAPI:
         response.headers[REQUEST_ID_HEADER] = request_id
         return response
 
+    # Infrastructure endpoints (unversioned) + aggregated business API.
     app.include_router(health.router)
+    app.include_router(api_router)
 
     return app
 
