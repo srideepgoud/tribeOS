@@ -1,0 +1,20 @@
+{
+  "name": "tribeos",
+  "version": "0.0.0",
+  "private": true,
+  "description": "TribeOS — internal ERP platform for Tribe (monorepo root).",
+  "packageManager": "pnpm@10.18.0",
+  "engines": {
+    "node": ">=22 <23",
+    "pnpm": ">=10 <11"
+  },
+  "scripts": {
+    "lint": "pnpm -r --if-present lint",
+    "format": "pnpm -r --if-present format",
+    "format:check": "pnpm -r --if-present format:check",
+    "typecheck": "pnpm -r --if-present typecheck",
+    "test": "pnpm -r --if-present test",
+    "build": "pnpm -r --if-present build",
+    "dev": "pnpm -r --parallel --if-present dev"
+  }
+}

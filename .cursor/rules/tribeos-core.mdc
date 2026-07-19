@@ -1,0 +1,102 @@
+---
+description: TribeOS core standards - project identity, architecture, business rules, and AI behavior
+alwaysApply: true
+---
+
+# TribeOS
+
+Internal ERP platform for Tribe, a Hyderabad-based event management company. This is production software — not a prototype, hackathon project, or CRUD demo.
+
+Always optimize for **maintainability, readability, correctness, scalability, testability**. Never optimize for fewer lines of code. Never produce placeholder implementations unless explicitly requested.
+
+## Authoritative Documents
+
+Before implementing any feature, consult these. If code conflicts with them, the documents win:
+
+- `docs/domain_model.md`
+- `docs/db_schema.md`
+- `docs/business_rules.md`
+- `docs/state_machine.md`
+- `docs/folder_structure.md`
+- `docs/api_contract.md`
+- `docs/design_system.md`
+- `docs/design_tokens.md`
+- `docs/dependency_policy.md`
+- `AI_CONTEXT.md`
+- `ARCHITECTURE.md`
+
+If two documents conflict, follow the precedence order in `docs/document_hierarchy.md`. These documents are frozen as of v1.0 — do not modify them unless explicitly instructed; conform to them instead.
+
+Never invent business logic, database tables, or entity names.
+
+## Business Terminology (use ONLY these names)
+
+`Client`, `Event`, `Cost Category`, `Cost Item`, `Vendor`, `Vendor Work Order`, `Client Invoice`, `Transaction`, `Cost Allocation`, `Change Request`, `Document`, `Audit Log`.
+
+Never rename or create synonyms. Wrong: `Purchase Order`. Correct: `Vendor Work Order`.
+
+## Architecture
+
+Backend layers: `Router → Service → Repository → Database`. Never bypass layers.
+
+- Services own all business logic.
+- Repositories never contain business logic.
+- Routers never contain SQL.
+
+Business logic (profit calculation, budget validation, state changes, invoice status, outstanding balance, approval checks) belongs **only** in Services — never in components, routers, repositories, or models.
+
+## API Design
+
+- REST only, under `/api/v1/`.
+- Thin controllers, consistent responses, proper HTTP status codes.
+- Return structured errors. Never expose stack traces.
+
+## Financial Rules
+
+- Transactions are immutable; Invoices are separate from Transactions.
+- Budget and financial history is preserved, never overwritten.
+- Profit and outstanding balances are calculated.
+- Corrections create reversing records.
+
+## State Machines
+
+- Every transition follows `docs/state_machine.md`.
+- Reject invalid transitions with HTTP 409. Never silently change state.
+
+## Audit Logs
+
+- Every important action generates an Audit Log. They are immutable and never deleted.
+- Audit Logs are not application logs.
+
+## File Storage
+
+- Files live in Supabase Storage; the database stores metadata only.
+- Never store binary files in PostgreSQL.
+
+## Security
+
+- Never trust client input; validate everything with parameterized queries.
+- Role checks in the backend; sanitize uploads.
+- Never expose or hardcode secrets/credentials.
+
+## Validation (no duplication across layers)
+
+Frontend: Zod · Backend: Pydantic · Business: Service layer · Database: Constraints.
+
+## Coding Style
+
+Small files, classes, and functions. Single Responsibility. Meaningful names. No commented-out/dead code, no duplicated logic. Prefer composition over inheritance unless justified.
+
+## Testing
+
+Every Service is testable. Financial logic, state transitions, and critical workflows require tests (integration tests for critical workflows).
+
+## Development Order
+
+`Database → Repository → Service → API → Frontend → Testing`. Never skip layers.
+
+## AI Behavior
+
+Understand the request, domain, and architecture first. Reuse existing code and avoid duplication. If unsure, ask — never guess business logic.
+
+When implementing: (1) briefly explain the approach, (2) write clean, modular, typed, validated, production-ready code following the architecture, (3) avoid unnecessary dependencies.

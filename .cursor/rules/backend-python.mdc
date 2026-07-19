@@ -1,0 +1,30 @@
+---
+description: TribeOS backend standards - Python, SQLAlchemy, database
+globs: backend/**/*.py,**/*.py
+alwaysApply: false
+---
+
+# Backend (Python)
+
+- Python 3.12+, type hints everywhere, PEP8.
+- Pydantic v2 for schemas/validation.
+- Use dataclasses only when appropriate.
+
+## Database
+
+- Supabase PostgreSQL is the single development database.
+- SQLAlchemy 2.0 Async + Alembic.
+- UUID primary keys everywhere — never integer PKs.
+- Never manually edit the schema (including via the Supabase dashboard); use Alembic migrations for every change.
+- Never use raw SQL unless explicitly requested.
+- Use relationships correctly; avoid N+1 queries; prefer eager loading where appropriate.
+
+## Layering
+
+- Business logic lives only in Services.
+- Repositories: data access only, no business logic.
+- Routers: no SQL, thin controllers.
+
+## Performance
+
+Readability first, avoid premature optimization. Use pagination, indexes, and explicit code.

@@ -1,0 +1,48 @@
+# ---------- Environment / secrets ----------
+.env
+.env.*
+!.env.example
+*.pem
+*.key
+
+# ---------- Python (apps/backend) ----------
+__pycache__/
+*.py[cod]
+*$py.class
+.Python
+.venv/
+venv/
+env/
+.pytest_cache/
+.mypy_cache/
+.ruff_cache/
+.coverage
+htmlcov/
+dist/
+build/
+*.egg-info/
+
+# ---------- Node / Next.js (apps/web, packages) ----------
+node_modules/
+.next/
+out/
+.turbo/
+coverage/
+*.tsbuildinfo
+.pnp.*
+.yarn/*
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+pnpm-debug.log*
+
+# ---------- Editors / OS ----------
+.DS_Store
+Thumbs.db
+.idea/
+*.swp
+
+# ---------- Logs / temp ----------
+logs/
+*.log
+tmp/

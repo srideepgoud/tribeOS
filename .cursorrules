@@ -1,0 +1,29 @@
+# TribeOS — Cursor Rules
+
+The canonical, actively-maintained AI rules live in `.cursor/rules/`:
+
+- `.cursor/rules/tribeos-core.mdc`        — always-applied core standards
+- `.cursor/rules/backend-python.mdc`      — backend (Python) standards
+- `.cursor/rules/frontend-typescript.mdc` — frontend (TypeScript) standards
+
+Authoritative project documents (code must never contradict these):
+
+- `AI_CONTEXT.md`, `ARCHITECTURE.md`
+- `docs/domain_model.md`, `docs/db_schema.md`, `docs/business_rules.md`, `docs/state_machine.md`
+- `docs/folder_structure.md`, `docs/api_contract.md`
+- `docs/design_system.md`, `docs/design_tokens.md`
+- `docs/dependency_policy.md`
+
+Conflicts are resolved by `docs/document_hierarchy.md`. All the above docs (plus ADRs and `.cursor/rules/`) are **frozen** as of v1.0 — conform to them; do not modify unless explicitly instructed.
+
+## Non-negotiables (summary)
+
+- Layering: Router → Service → Repository → Database. Never bypass layers.
+- Business logic lives ONLY in Services.
+- Use exact business terminology (e.g. "Vendor Work Order", never "Purchase Order").
+- UUID primary keys everywhere; SQLAlchemy 2.0 Async + Alembic; never edit schema manually.
+- Database is a single Supabase PostgreSQL project (development); all schema changes go through Alembic — never edit the schema via the Supabase dashboard.
+- Transactions are immutable; financial history is append-only; corrections create reversing records.
+- Reject invalid state transitions with HTTP 409; every important action writes an Audit Log.
+- Strict TypeScript (no `any`); no business logic or `fetch()` in components.
+- Never expose stack traces or secrets. Production-ready code only — no placeholders unless requested.

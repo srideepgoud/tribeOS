@@ -1,0 +1,25 @@
+---
+description: TribeOS frontend standards - Next.js, TypeScript, UI design
+globs: frontend/**/*.{ts,tsx},**/*.{ts,tsx}
+alwaysApply: false
+---
+
+# Frontend (TypeScript / Next.js)
+
+Stack: Next.js App Router, TypeScript, Tailwind, shadcn/ui, React Hook Form, TanStack Query, Zod.
+
+## Rules
+
+- No business logic inside components.
+- No `fetch()` inside components — use an API service abstraction.
+- Reusable components, prefer composition.
+- Strict TypeScript. Never use `any`. Prefer interfaces. Use `readonly` where appropriate. Avoid unnecessary state.
+
+## UI Design
+
+- Follow `docs/design_system.md` (visual language) and `docs/design_tokens.md` (semantic tokens) for all UI. Do not invent colors, spacing, typography, or component styles.
+- Brand: **TR!BE**. Theme: Dark-first.
+- Use semantic token classes (`bg-primary`, `text-muted`, `border-border`) — never raw hex like `#F04E37` in components.
+- Design language: premium, minimal, modern, high contrast, event-industry.
+- Component library: shadcn/ui only; customize via the Tailwind theme.
+- Avoid generic Bootstrap admin dashboards.
