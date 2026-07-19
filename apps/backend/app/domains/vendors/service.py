@@ -1,7 +1,4 @@
-"""Vendor business logic (docs/business_rules.md — Vendor Rules).
-
-Archive guard for active Vendor Work Orders is deferred until Phase 6.
-"""
+"""Vendor business logic (docs/business_rules.md — Vendor Rules)."""
 
 from __future__ import annotations
 
@@ -11,10 +8,12 @@ from datetime import UTC, datetime
 
 from sqlalchemy.ext.asyncio import AsyncSession
 
+from app.domains.vendor_work_orders.repository import VendorWorkOrderRepository
 from app.domains.vendors.models import Vendor
 from app.domains.vendors.repository import VendorRepository
 from app.domains.vendors.schemas import VendorCreate, VendorUpdate
 from app.domains.vendors.validators import normalize_vendor_fields
+from app.shared.errors import ConflictError
 from app.shared.pagination import PageParams
 
 
@@ -22,6 +21,7 @@ class VendorService:
     def __init__(self, session: AsyncSession) -> None:
         self._session = session
         self._repo = VendorRepository(session)
+        self._work_orders = VendorWorkOrderRepository(session)
 
     async def get(self, vendor_id: uuid.UUID) -> Vendor:
         return await self._repo.get_required(vendor_id)
@@ -52,13 +52,11 @@ class VendorService:
         return vendor
 
     async def archive(self, vendor_id: uuid.UUID, *, actor: uuid.UUID | None = None) -> None:
-        """Soft delete (business_rules.md: Vendors cannot be permanently deleted).
-
-        Deferred rule: "Vendors with active Work Orders cannot be archived."
-        Enforced when Vendor Work Orders exist (Phase 6). Until then there are
-        no Work Orders to block archival.
-        """
+        """Soft delete (business_rules.md: Vendors cannot be permanently deleted)."""
         vendor = await self.get(vendor_id)
+        active = await self._work_orders.count_active_by_vendor(vendor_id)
+        if active > 0:
+            raise ConflictError("Vendors with active Vendor Work Orders cannot be archived.")
         if vendor.archived_at is None:
             vendor.archived_at = datetime.now(UTC)
             vendor.updated_by = actor

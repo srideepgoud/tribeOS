@@ -41,6 +41,7 @@ from app.domains.clients import models as _clients_models  # noqa: F401  (regist
 from app.domains.cost_categories import models as _cost_categories_models  # noqa: F401
 from app.domains.cost_items import models as _cost_items_models  # noqa: F401
 from app.domains.events import models as _events_models  # noqa: F401  (register table)
+from app.domains.vendor_work_orders import models as _vendor_work_orders_models  # noqa: F401
 from app.domains.vendors import models as _vendors_models  # noqa: F401
 from app.main import create_app
 
