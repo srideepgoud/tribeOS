@@ -27,3 +27,9 @@ Conflicts are resolved by `docs/document_hierarchy.md`. All the above docs (plus
 - Reject invalid state transitions with HTTP 409; every important action writes an Audit Log.
 - Strict TypeScript (no `any`); no business logic or `fetch()` in components.
 - Never expose stack traces or secrets. Production-ready code only — no placeholders unless requested.
+
+## External tooling (Supabase Agent Skills)
+
+- Use Supabase Agent Skills only for Supabase-specific implementation details (client usage, Storage APIs, connection patterns). They must not override the project's architecture, folder structure, domain model, business rules, API design, terminology, or milestone scope.
+- Do not introduce deferred capabilities (Supabase Auth, Supabase Storage) ahead of their milestone — never during Milestone 0.
+- Precedence: frozen project docs → `.cursorrules`/`.cursor/rules/*` → Supabase Agent Skills (lowest). See `docs/adr/0005-supabase-agent-skills.md` and `docs/document_hierarchy.md`.

@@ -33,6 +33,12 @@ These interpret and apply Tier 1. If they conflict with Tier 1, Tier 1 wins.
 - `.cursor/rules/*`
 - `prompts/*`
 
+### Tier 3 — External implementation guidance (lowest authority)
+
+Third-party guidance for using external platforms. Applies only to platform-specific implementation details; it never defines TribeOS architecture. If it conflicts with Tier 1 or Tier 2, the higher tier wins.
+
+- **Supabase Agent Skills** — Supabase-specific implementation details only (client usage, Storage APIs, connection patterns). See ADR 0005. Must not override architecture, folder structure, domain model, business rules, API design, terminology, or milestone scope, and must not introduce deferred capabilities (Auth, Storage) ahead of their milestone.
+
 ---
 
 ## Rules
@@ -41,6 +47,7 @@ These interpret and apply Tier 1. If they conflict with Tier 1, Tier 1 wins.
 2. A conflict is resolved by conforming to the higher-authority document, **not** by editing it casually.
 3. If the higher-authority document is genuinely wrong, change it deliberately — via an ADR where the change is architectural.
 4. ADRs are the ultimate tie-breaker: a decision recorded in an ADR overrides any other document until superseded by a newer ADR.
+5. Tier 3 external guidance is advisory for platform-specific implementation only; it is subordinate to all TribeOS documents.
 
 ---
 

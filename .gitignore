@@ -46,3 +46,10 @@ Thumbs.db
 logs/
 *.log
 tmp/
+
+# ---------- Agent skills (per-agent dirs) ----------
+# Canonical skills live in .agents/skills (committed, shared). The skills CLI
+# can also create per-agent copies/junctions when installed with --all; those
+# are machine/agent-specific and not committed.
+.claude/
+agent/

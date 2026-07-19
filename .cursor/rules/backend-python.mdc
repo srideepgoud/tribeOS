@@ -17,6 +17,7 @@ alwaysApply: false
 - UUID primary keys everywhere — never integer PKs.
 - Never manually edit the schema (including via the Supabase dashboard); use Alembic migrations for every change.
 - Never use raw SQL unless explicitly requested.
+- Supabase Agent Skills are implementation guidance only (client/Storage/connection details). They never override this project's architecture, schema, or milestone scope; do not add Auth or Storage ahead of their milestone (see ADR 0005).
 - Use relationships correctly; avoid N+1 queries; prefer eager loading where appropriate.
 
 ## Layering
