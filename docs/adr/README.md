@@ -25,3 +25,4 @@ ADRs are immutable once accepted. To change a decision, add a new ADR that super
 | [0006](./0006-domain-module-file-convention.md) | Domain module file naming convention | Accepted |
 | [0007](./0007-validation-responsibilities.md) | Validation responsibilities across layers | Accepted |
 | [0008](./0008-materialized-financial-values.md) | Materialized financial values on Cost Items | Accepted |
+| [0009](./0009-aggregate-ownership.md) | Aggregate ownership boundaries | Accepted |
