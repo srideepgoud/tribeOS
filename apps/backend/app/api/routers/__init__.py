@@ -10,6 +10,8 @@ from __future__ import annotations
 from fastapi import APIRouter
 
 from app.domains.clients.router import router as clients_router
+from app.domains.events.router import router as events_router
 
 api_router = APIRouter()
 api_router.include_router(clients_router)
+api_router.include_router(events_router)

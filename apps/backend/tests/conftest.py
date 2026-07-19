@@ -38,6 +38,7 @@ from sqlalchemy.pool import StaticPool
 from app.db.base import Base
 from app.db.session import get_session
 from app.domains.clients import models as _clients_models  # noqa: F401  (register table)
+from app.domains.events import models as _events_models  # noqa: F401  (register table)
 from app.main import create_app
 
 

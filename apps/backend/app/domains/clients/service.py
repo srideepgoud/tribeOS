@@ -15,7 +15,8 @@ from app.domains.clients.models import Client
 from app.domains.clients.repository import ClientRepository
 from app.domains.clients.schemas import ClientCreate, ClientUpdate
 from app.domains.clients.validators import normalize_client_fields
-from app.shared.errors import NotFoundError
+from app.domains.events.repository import EventRepository
+from app.shared.errors import ConflictError, NotFoundError
 from app.shared.pagination import PageParams
 
 
@@ -58,12 +59,14 @@ class ClientService:
     async def archive(self, client_id: uuid.UUID, *, actor: uuid.UUID | None = None) -> None:
         """Soft delete (business_rules.md: Clients are never permanently deleted).
 
-        Deferred rule: "A client cannot be archived while active Events exist."
-        This guard requires the Events module (no ``events`` table exists yet) and
-        will be enforced when Events is implemented. Until then there are no events
-        to block archival.
+        A client cannot be archived while non-archived Events exist.
         """
         client = await self.get(client_id)
+        event_count = await EventRepository(self._session).count_non_archived_by_client(client_id)
+        if event_count > 0:
+            raise ConflictError(
+                "Cannot archive client while non-archived events exist.",
+            )
         if client.archived_at is None:
             client.archived_at = datetime.now(UTC)
             client.updated_by = actor

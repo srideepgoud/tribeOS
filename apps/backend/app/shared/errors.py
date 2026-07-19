@@ -30,10 +30,17 @@ class NotFoundError(AppError):
 
 
 class ConflictError(AppError):
-    """Uniqueness or state conflict (HTTP 409)."""
+    """Uniqueness or concurrency conflict (HTTP 409)."""
 
     status_code = 409
     code = "CONFLICT"
+
+
+class InvalidStateError(AppError):
+    """Invalid state-machine transition or immutable state (HTTP 409)."""
+
+    status_code = 409
+    code = "INVALID_STATE"
 
 
 class DomainValidationError(AppError):

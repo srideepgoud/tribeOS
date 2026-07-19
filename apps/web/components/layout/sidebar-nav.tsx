@@ -2,12 +2,13 @@
 
 import Link from "next/link";
 import { usePathname } from "next/navigation";
-import { Users } from "lucide-react";
+import { CalendarDays, Users } from "lucide-react";
 import { cn } from "@tribeos/ui";
 
-// Structural navigation. Only the Clients entry exists in this milestone;
-// further entries are added as their business modules are built.
-const NAV_ITEMS = [{ href: "/clients", label: "Clients", icon: Users }] as const;
+const NAV_ITEMS = [
+  { href: "/clients", label: "Clients", icon: Users },
+  { href: "/events", label: "Events", icon: CalendarDays },
+] as const;
 
 export function SidebarNav() {
   const pathname = usePathname();
