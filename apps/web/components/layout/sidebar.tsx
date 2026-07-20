@@ -3,8 +3,7 @@ import { Wordmark } from "./wordmark";
 
 /**
  * Application sidebar. Fixed 280px on large screens, hidden below the `lg`
- * breakpoint. Navigation currently contains only the Clients entry; further
- * entries are added as their business modules are built.
+ * breakpoint. Grouped navigation for workspace-first information architecture.
  */
 export function Sidebar() {
   return (

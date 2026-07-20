@@ -8,6 +8,14 @@ import type { EventCreateInput, EventUpdateInput, ListEventsParams } from "@/typ
 const EVENTS_KEY = "events";
 const READINESS_KEY = "event-financial-readiness";
 
+export function useEvent(eventId: string | undefined) {
+  return useQuery({
+    queryKey: [EVENTS_KEY, eventId],
+    queryFn: () => eventsService.get(eventId!),
+    enabled: Boolean(eventId),
+  });
+}
+
 export function useEvents(params: ListEventsParams) {
   return useQuery({
     queryKey: [EVENTS_KEY, params],

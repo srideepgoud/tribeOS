@@ -46,8 +46,8 @@ export function DashboardEventTable({ events }: DashboardEventTableProps) {
               <TableRow key={event.id}>
                 <TableCell className="font-medium text-foreground">
                   <div className="flex flex-col gap-1">
-                      <Link
-                      href="/events"
+                    <Link
+                      href={`/events/${event.id}/overview`}
                       className="hover:text-primary hover:underline"
                     >
                       {event.name}

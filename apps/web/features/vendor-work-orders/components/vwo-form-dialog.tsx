@@ -40,6 +40,7 @@ interface VendorWorkOrderFormDialogProps {
   open: boolean;
   onOpenChange: (open: boolean) => void;
   workOrder?: VendorWorkOrder | null;
+  defaultCostItemId?: string;
 }
 
 function toFormValues(workOrder: VendorWorkOrder): VendorWorkOrderFormValues {
@@ -57,6 +58,7 @@ export function VendorWorkOrderFormDialog({
   open,
   onOpenChange,
   workOrder,
+  defaultCostItemId,
 }: VendorWorkOrderFormDialogProps) {
   const isEdit = Boolean(workOrder);
   const commercialLocked = workOrder ? isCommercialLocked(workOrder.status) : false;
@@ -87,12 +89,19 @@ export function VendorWorkOrderFormDialog({
 
   useEffect(() => {
     if (!open) return;
-    reset(workOrder ? toFormValues(workOrder) : emptyVendorWorkOrderForm);
+    reset(
+      workOrder
+        ? toFormValues(workOrder)
+        : {
+            ...emptyVendorWorkOrderForm,
+            cost_item_id: defaultCostItemId ?? "",
+          },
+    );
     setPendingStatus("");
     createWo.reset();
     updateWo.reset();
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [open, workOrder]);
+  }, [open, workOrder, defaultCostItemId]);
 
   const onSubmit = handleSubmit(async (values) => {
     if (workOrder) {
@@ -141,7 +150,14 @@ export function VendorWorkOrderFormDialog({
 
         <form onSubmit={onSubmit} className="flex flex-col gap-4" noValidate>
           {!isEdit ? (
-            <>
+            defaultCostItemId ? (
+              <Field label="Budget line">
+                <p className="text-sm text-foreground">
+                  {vendorCostItems.find((item) => item.id === defaultCostItemId)?.title ??
+                    "Selected budget line"}
+                </p>
+              </Field>
+            ) : (
               <Field label="Cost Item" required error={errors.cost_item_id?.message}>
                 <Controller
                   name="cost_item_id"
@@ -162,28 +178,30 @@ export function VendorWorkOrderFormDialog({
                   )}
                 />
               </Field>
+            )
+          ) : null}
 
-              <Field label="Vendor" required error={errors.vendor_id?.message}>
-                <Controller
-                  name="vendor_id"
-                  control={control}
-                  render={({ field }) => (
-                    <Select value={field.value || undefined} onValueChange={field.onChange}>
-                      <SelectTrigger aria-invalid={Boolean(errors.vendor_id)}>
-                        <SelectValue placeholder="Select vendor" />
-                      </SelectTrigger>
-                      <SelectContent>
-                        {vendors.map((vendor) => (
-                          <SelectItem key={vendor.id} value={vendor.id}>
-                            {vendor.company_name}
-                          </SelectItem>
-                        ))}
-                      </SelectContent>
-                    </Select>
-                  )}
-                />
-              </Field>
-            </>
+          {!isEdit ? (
+            <Field label="Vendor" required error={errors.vendor_id?.message}>
+              <Controller
+                name="vendor_id"
+                control={control}
+                render={({ field }) => (
+                  <Select value={field.value || undefined} onValueChange={field.onChange}>
+                    <SelectTrigger aria-invalid={Boolean(errors.vendor_id)}>
+                      <SelectValue placeholder="Select vendor" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      {vendors.map((vendor) => (
+                        <SelectItem key={vendor.id} value={vendor.id}>
+                          {vendor.company_name}
+                        </SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                )}
+              />
+            </Field>
           ) : (
             <Field label="Vendor" error={errors.vendor_id?.message}>
               <Controller

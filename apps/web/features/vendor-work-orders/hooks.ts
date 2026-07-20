@@ -11,10 +11,11 @@ import type {
 
 const VWO_KEY = "vendor-work-orders";
 
-export function useVendorWorkOrders(params: ListVendorWorkOrdersParams) {
+export function useVendorWorkOrders(params: ListVendorWorkOrdersParams, enabled = true) {
   return useQuery({
     queryKey: [VWO_KEY, params],
     queryFn: () => vendorWorkOrdersService.list(params),
+    enabled,
   });
 }
 

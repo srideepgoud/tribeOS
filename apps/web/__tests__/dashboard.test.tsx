@@ -100,7 +100,10 @@ describe("dashboard feature", () => {
     expect(screen.getByText("Ready to Close")).toBeInTheDocument();
     expect(screen.getAllByText("Outstanding").length).toBeGreaterThanOrEqual(1);
     const link = screen.getByRole("link", { name: "Annual Gala" });
-    expect(link).toHaveAttribute("href", "/events");
+    expect(link).toHaveAttribute(
+      "href",
+      "/events/11111111-1111-1111-1111-111111111111/overview",
+    );
   });
 
   it("renders empty state when there are no events", () => {

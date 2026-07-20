@@ -54,7 +54,7 @@ describe("events feature", () => {
     expect(onCreate).toHaveBeenCalledOnce();
   });
 
-  it("renders an event row with client name", () => {
+  it("renders an event row with client name and workspace link", () => {
     render(
       <EventTable
         events={[sampleEvent]}
@@ -64,6 +64,10 @@ describe("events feature", () => {
       />,
     );
     expect(screen.getByText("Annual Gala")).toBeInTheDocument();
+    expect(screen.getByRole("link", { name: "Annual Gala" })).toHaveAttribute(
+      "href",
+      `/events/${sampleEvent.id}/overview`,
+    );
     expect(screen.getByText("Acme Events")).toBeInTheDocument();
     expect(screen.getByText("Draft")).toBeInTheDocument();
   });

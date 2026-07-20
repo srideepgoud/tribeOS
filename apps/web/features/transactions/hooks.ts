@@ -11,11 +11,13 @@ import type {
 
 const TXN_KEY = "transactions";
 
-export function useTransactions(params: ListTransactionsParams) {
+export function useTransactions(params: ListTransactionsParams, enabled = true) {
   return useQuery({
     queryKey: [TXN_KEY, params],
     queryFn: () => transactionsService.list(params),
-    enabled: params.client_invoice_id !== undefined ? Boolean(params.client_invoice_id) : true,
+    enabled:
+      enabled &&
+      (params.client_invoice_id !== undefined ? Boolean(params.client_invoice_id) : true),
   });
 }
 

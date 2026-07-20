@@ -1,5 +1,6 @@
 "use client";
 
+import Link from "next/link";
 import { Pencil, Trash2 } from "lucide-react";
 import { Button, Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@tribeos/ui";
 
@@ -40,7 +41,14 @@ export function EventTable({ events, clientNames, onEdit, onArchive }: EventTabl
         <TableBody>
           {events.map((event) => (
             <TableRow key={event.id}>
-              <TableCell className="font-medium text-foreground">{event.name}</TableCell>
+              <TableCell className="font-medium text-foreground">
+                <Link
+                  href={`/events/${event.id}/overview`}
+                  className="hover:text-primary hover:underline"
+                >
+                  {event.name}
+                </Link>
+              </TableCell>
               <TableCell className="text-foreground-secondary">
                 {clientNames[event.client_id] ?? "—"}
               </TableCell>

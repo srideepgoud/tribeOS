@@ -37,6 +37,7 @@ interface ClientInvoiceFormDialogProps {
   open: boolean;
   onOpenChange: (open: boolean) => void;
   invoice?: ClientInvoice | null;
+  defaultEventId?: string;
 }
 
 function toFormValues(invoice: ClientInvoice): ClientInvoiceFormValues {
@@ -56,6 +57,7 @@ export function ClientInvoiceFormDialog({
   open,
   onOpenChange,
   invoice,
+  defaultEventId,
 }: ClientInvoiceFormDialogProps) {
   const isEdit = Boolean(invoice);
   const createMutation = useCreateClientInvoice();
@@ -83,11 +85,18 @@ export function ClientInvoiceFormDialog({
 
   useEffect(() => {
     if (!open) return;
-    reset(invoice ? toFormValues(invoice) : emptyClientInvoiceForm);
+    reset(
+      invoice
+        ? toFormValues(invoice)
+        : {
+            ...emptyClientInvoiceForm,
+            event_id: defaultEventId ?? "",
+          },
+    );
     createMutation.reset();
     updateMutation.reset();
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [open, invoice]);
+  }, [open, invoice, defaultEventId]);
 
   useEffect(() => {
     if (!eventId || isEdit) return;
@@ -125,28 +134,34 @@ export function ClientInvoiceFormDialog({
         <form className="flex flex-col gap-4" onSubmit={onSubmit}>
           <div className="flex flex-col gap-2">
             <Label htmlFor="event_id">Event</Label>
-            <Controller
-              control={control}
-              name="event_id"
-              render={({ field }) => (
-                <Select
-                  value={field.value}
-                  onValueChange={field.onChange}
-                  disabled={isEdit && !draftOnly}
-                >
-                  <SelectTrigger id="event_id">
-                    <SelectValue placeholder="Select event" />
-                  </SelectTrigger>
-                  <SelectContent>
-                    {events.map((event) => (
-                      <SelectItem key={event.id} value={event.id}>
-                        {event.name}
-                      </SelectItem>
-                    ))}
-                  </SelectContent>
-                </Select>
-              )}
-            />
+            {defaultEventId && !isEdit ? (
+              <p className="text-sm text-foreground">
+                {events.find((row) => row.id === defaultEventId)?.name ?? "Selected event"}
+              </p>
+            ) : (
+              <Controller
+                control={control}
+                name="event_id"
+                render={({ field }) => (
+                  <Select
+                    value={field.value}
+                    onValueChange={field.onChange}
+                    disabled={isEdit && !draftOnly}
+                  >
+                    <SelectTrigger id="event_id">
+                      <SelectValue placeholder="Select event" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      {events.map((event) => (
+                        <SelectItem key={event.id} value={event.id}>
+                          {event.name}
+                        </SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                )}
+              />
+            )}
             {errors.event_id ? (
               <p className="text-sm text-danger">{errors.event_id.message}</p>
             ) : null}

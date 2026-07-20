@@ -26,7 +26,7 @@ import { useCostItems } from "@/features/cost-items/hooks";
 import { useEvents } from "@/features/events/hooks";
 import { useVendorWorkOrders } from "@/features/vendor-work-orders/hooks";
 import { apiErrorMessage } from "@/services/http";
-import type { Transaction, TransactionStatus } from "@/types/transaction";
+import type { Transaction, TransactionStatus, Phase9CreateType } from "@/types/transaction";
 import {
   ALLOWED_TRANSACTION_TRANSITIONS,
   isPendingEditable,
@@ -47,6 +47,9 @@ interface TransactionFormDialogProps {
   open: boolean;
   onOpenChange: (open: boolean) => void;
   transaction?: Transaction | null;
+  defaultEventId?: string;
+  defaultCostItemId?: string;
+  defaultTransactionType?: Phase9CreateType;
 }
 
 function toFormValues(txn: Transaction): TransactionFormValues {
@@ -76,6 +79,9 @@ export function TransactionFormDialog({
   open,
   onOpenChange,
   transaction,
+  defaultEventId,
+  defaultCostItemId,
+  defaultTransactionType,
 }: TransactionFormDialogProps) {
   const isEdit = Boolean(transaction);
   const pendingEditable = transaction ? isPendingEditable(transaction.status) : true;
@@ -121,12 +127,21 @@ export function TransactionFormDialog({
 
   useEffect(() => {
     if (!open) return;
-    reset(transaction ? toFormValues(transaction) : emptyTransactionForm);
+    reset(
+      transaction
+        ? toFormValues(transaction)
+        : {
+            ...emptyTransactionForm,
+            event_id: defaultEventId ?? "",
+            cost_item_id: defaultCostItemId ?? "",
+            transaction_type: defaultTransactionType ?? emptyTransactionForm.transaction_type,
+          },
+    );
     setPendingStatus("");
     createTxn.reset();
     updateTxn.reset();
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [open, transaction]);
+  }, [open, transaction, defaultEventId, defaultCostItemId, defaultTransactionType]);
 
   const onSubmit = handleSubmit(async (values) => {
     if (transaction) {
@@ -215,28 +230,34 @@ export function TransactionFormDialog({
           ) : null}
 
           <Field label="Event" required error={errors.event_id?.message}>
-            <Controller
-              name="event_id"
-              control={control}
-              render={({ field }) => (
-                <Select
-                  value={field.value || undefined}
-                  onValueChange={field.onChange}
-                  disabled={isEdit}
-                >
-                  <SelectTrigger>
-                    <SelectValue placeholder="Select event" />
-                  </SelectTrigger>
-                  <SelectContent>
-                    {events.map((event) => (
-                      <SelectItem key={event.id} value={event.id}>
-                        {event.name}
-                      </SelectItem>
-                    ))}
-                  </SelectContent>
-                </Select>
-              )}
-            />
+            {defaultEventId && !isEdit ? (
+              <p className="text-sm text-foreground">
+                {events.find((event) => event.id === defaultEventId)?.name ?? "Selected event"}
+              </p>
+            ) : (
+              <Controller
+                name="event_id"
+                control={control}
+                render={({ field }) => (
+                  <Select
+                    value={field.value || undefined}
+                    onValueChange={field.onChange}
+                    disabled={isEdit}
+                  >
+                    <SelectTrigger>
+                      <SelectValue placeholder="Select event" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      {events.map((event) => (
+                        <SelectItem key={event.id} value={event.id}>
+                          {event.name}
+                        </SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                )}
+              />
+            )}
           </Field>
 
           {txnType === "Client Receipt" || transaction?.transaction_type === "Client Receipt" ? (
@@ -269,26 +290,28 @@ export function TransactionFormDialog({
             </Field>
           ) : (
             <>
-              <label className="flex items-center gap-2 text-sm text-foreground">
-                <input
-                  type="checkbox"
-                  className="size-4"
-                  checked={useShared}
-                  disabled={isEdit && !pendingEditable}
-                  onChange={(event) => {
-                    setValue("use_shared_allocations", event.target.checked);
-                    if (event.target.checked) {
-                      setValue("cost_item_id", "");
-                      if (allocations.length === 0) {
-                        setValue("allocations", [{ cost_item_id: "", allocated_amount: "" }]);
+              {!defaultCostItemId || isEdit ? (
+                <label className="flex items-center gap-2 text-sm text-foreground">
+                  <input
+                    type="checkbox"
+                    className="size-4"
+                    checked={useShared}
+                    disabled={isEdit && !pendingEditable}
+                    onChange={(event) => {
+                      setValue("use_shared_allocations", event.target.checked);
+                      if (event.target.checked) {
+                        setValue("cost_item_id", "");
+                        if (allocations.length === 0) {
+                          setValue("allocations", [{ cost_item_id: "", allocated_amount: "" }]);
+                        }
+                      } else {
+                        setValue("allocations", []);
                       }
-                    } else {
-                      setValue("allocations", []);
-                    }
-                  }}
-                />
-                Split across Cost Items (shared allocations)
-              </label>
+                    }}
+                  />
+                  Split across Cost Items (shared allocations)
+                </label>
+              ) : null}
 
               {useShared ? (
                 <AllocationEditor
@@ -300,6 +323,13 @@ export function TransactionFormDialog({
                   allocations={allocations}
                   disabled={isEdit && !pendingEditable}
                 />
+              ) : defaultCostItemId && !isEdit ? (
+                <Field label="Budget line">
+                  <p className="text-sm text-foreground">
+                    {costItems.find((item) => item.id === defaultCostItemId)?.title ??
+                      "Selected budget line"}
+                  </p>
+                </Field>
               ) : (
                 <Field label="Cost Item" required error={errors.cost_item_id?.message}>
                   <Controller
