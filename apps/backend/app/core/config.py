@@ -7,11 +7,13 @@ defaults, so the application fails fast at startup if they are missing.
 
 from __future__ import annotations
 
+import json
 from functools import lru_cache
 from pathlib import Path
+from typing import Annotated
 
 from pydantic import Field, field_validator
-from pydantic_settings import BaseSettings, SettingsConfigDict
+from pydantic_settings import BaseSettings, NoDecode, SettingsConfigDict
 
 # apps/backend/app/core/config.py -> repo root is four parents up from this file's dir.
 _REPO_ROOT = Path(__file__).resolve().parents[4]
@@ -43,8 +45,11 @@ class Settings(BaseSettings):
     app_env: str = "development"
     log_level: str = "INFO"
 
-    # Comma-separated browser origins allowed for CORS (local Next.js ports by default).
-    cors_origins: list[str] = Field(default_factory=lambda: list(_DEFAULT_DEV_CORS_ORIGINS))
+    # Comma-separated browser origins (``NoDecode`` so Render/env plain strings are not
+    # JSON-parsed before the validator runs).
+    cors_origins: Annotated[list[str], NoDecode] = Field(
+        default_factory=lambda: list(_DEFAULT_DEV_CORS_ORIGINS)
+    )
 
     # Database (Supabase PostgreSQL)
     database_url: str
@@ -60,7 +65,13 @@ class Settings(BaseSettings):
         if value is None or value == "":
             return list(_DEFAULT_DEV_CORS_ORIGINS)
         if isinstance(value, str):
-            return [origin.strip() for origin in value.split(",") if origin.strip()]
+            stripped = value.strip()
+            # Accept JSON arrays from platforms that require them, and comma-separated URLs.
+            if stripped.startswith("["):
+                parsed = json.loads(stripped)
+                if isinstance(parsed, list):
+                    return [str(origin).strip() for origin in parsed if str(origin).strip()]
+            return [origin.strip() for origin in stripped.split(",") if origin.strip()]
         return value
 
 
