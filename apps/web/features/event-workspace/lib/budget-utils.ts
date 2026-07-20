@@ -19,19 +19,16 @@ export interface BudgetTotals {
   readonly variance: number;
 }
 
+/** Budget Sections/Lines are editable from Draft through Execution; frozen at Settlement+. */
 export function isBudgetEditable(eventStatus: EventStatus): boolean {
-  if (eventStatus === "Cancelled") return false;
-  const rank = statusRank(eventStatus);
-  return rank >= statusRank("Commercials") && rank < statusRank("Settlement");
+  if (eventStatus === "Cancelled" || eventStatus === "Closed") return false;
+  return statusRank(eventStatus) < statusRank("Settlement");
 }
 
 export function budgetEditingMessage(eventStatus: EventStatus): string | null {
   if (isBudgetEditable(eventStatus)) return null;
   if (eventStatus === "Cancelled") return "This event is cancelled.";
-  if (statusRank(eventStatus) < statusRank("Commercials")) {
-    return "Advance this event to Commercials to start building the budget.";
-  }
-  if (statusRank(eventStatus) >= statusRank("Settlement")) {
+  if (eventStatus === "Closed" || statusRank(eventStatus) >= statusRank("Settlement")) {
     return "Budget is frozen during Settlement and after Close.";
   }
   return null;

@@ -59,11 +59,14 @@ const workOrder: VendorWorkOrder = {
 };
 
 describe("budget utils", () => {
-  it("allows editing during Commercials through Execution", () => {
+  it("allows editing from Draft through Execution", () => {
+    expect(isBudgetEditable("Draft")).toBe(true);
+    expect(isBudgetEditable("Planning")).toBe(true);
     expect(isBudgetEditable("Commercials")).toBe(true);
     expect(isBudgetEditable("Execution")).toBe(true);
     expect(isBudgetEditable("Settlement")).toBe(false);
-    expect(isBudgetEditable("Planning")).toBe(false);
+    expect(isBudgetEditable("Closed")).toBe(false);
+    expect(isBudgetEditable("Cancelled")).toBe(false);
   });
 
   it("parses valid budget amounts", () => {

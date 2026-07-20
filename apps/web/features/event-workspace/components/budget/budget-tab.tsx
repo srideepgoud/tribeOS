@@ -4,13 +4,16 @@ import { useMemo, useState } from "react";
 import { CopyPlus, FileSpreadsheet, Upload } from "lucide-react";
 import { Button, Skeleton } from "@tribeos/ui";
 
+import { TransactionFormDialog } from "@/features/transactions/components/txn-form-dialog";
+import { VendorWorkOrderFormDialog } from "@/features/vendor-work-orders/components/vwo-form-dialog";
 import { apiErrorMessage } from "@/services/http";
+import type { CostItem } from "@/types/cost-item";
 
 import { useBudgetData } from "../../hooks/use-budget-data";
 import { budgetEditingMessage } from "../../lib/budget-utils";
 import { WorkspaceErrorState } from "../workspace-error-state";
-import { BudgetEmptyState } from "./budget-empty-state";
 import { BudgetBulkPasteDialog } from "./budget-bulk-paste-dialog";
+import { BudgetEmptyState } from "./budget-empty-state";
 import { BudgetExcelImportDialog } from "./budget-excel-import-dialog";
 import { BudgetLineDetailPanel } from "./budget-line-detail-panel";
 import { BudgetTemplatesDialog } from "./budget-templates-dialog";
@@ -25,6 +28,8 @@ export function BudgetTab({ eventId }: BudgetTabProps) {
   const [bulkPasteOpen, setBulkPasteOpen] = useState(false);
   const [templatesOpen, setTemplatesOpen] = useState(false);
   const [excelImportOpen, setExcelImportOpen] = useState(false);
+  const [assignVendorLine, setAssignVendorLine] = useState<CostItem | null>(null);
+  const [recordExpenseLine, setRecordExpenseLine] = useState<CostItem | null>(null);
   const {
     event,
     sections,
@@ -71,8 +76,8 @@ export function BudgetTab({ eventId }: BudgetTabProps) {
         <div className="flex flex-col gap-1">
           <h2 className="text-lg font-semibold text-foreground">Budget</h2>
           <p className="text-sm text-muted">
-            Plan the event in nested budget sections and lines. Committed and actual values are
-            derived from work orders and allocations.
+            Build sections and lines inline — like a spreadsheet. Click a line to open its detail
+            panel for vendors and expenses.
           </p>
         </div>
         {editable ? (
@@ -99,14 +104,12 @@ export function BudgetTab({ eventId }: BudgetTabProps) {
         </div>
       ) : null}
 
-      {!hasSections ? (
-        <BudgetEmptyState
-          message={
-            editable
-              ? "Add a budget section below, then add lines underneath it — just like your Excel sheets."
-              : (editingMessage ?? "No budget sections yet.")
-          }
-        />
+      {!hasSections && editable ? (
+        <BudgetEmptyState message="Start with a budget section (e.g. Production), then add lines underneath it. Event context is already set — no dialogs needed." />
+      ) : null}
+
+      {!hasSections && !editable ? (
+        <BudgetEmptyState message={editingMessage ?? "No budget sections yet."} />
       ) : null}
 
       {hasSections || editable ? (
@@ -119,6 +122,8 @@ export function BudgetTab({ eventId }: BudgetTabProps) {
           editable={editable}
           selectedLineId={selectedLineId}
           onOpenLine={(line) => setSelectedLineId(line.id)}
+          onAssignVendor={(line) => setAssignVendorLine(line)}
+          onRecordExpense={(line) => setRecordExpenseLine(line)}
         />
       ) : null}
 
@@ -131,6 +136,24 @@ export function BudgetTab({ eventId }: BudgetTabProps) {
           if (!open) setSelectedLineId(null);
         }}
       />
+
+      <VendorWorkOrderFormDialog
+        open={Boolean(assignVendorLine)}
+        onOpenChange={(open) => {
+          if (!open) setAssignVendorLine(null);
+        }}
+        defaultCostItemId={assignVendorLine?.id}
+      />
+      <TransactionFormDialog
+        open={Boolean(recordExpenseLine)}
+        onOpenChange={(open) => {
+          if (!open) setRecordExpenseLine(null);
+        }}
+        defaultEventId={eventId}
+        defaultCostItemId={recordExpenseLine?.id}
+        defaultTransactionType="Vendor Payment"
+      />
+
       <BudgetBulkPasteDialog
         eventId={eventId}
         categories={categories}

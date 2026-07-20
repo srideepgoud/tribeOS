@@ -2,102 +2,15 @@
 
 import { useState } from "react";
 import { ChevronDown, ChevronRight, Trash2 } from "lucide-react";
-import { Button, Input } from "@tribeos/ui";
+import { Button } from "@tribeos/ui";
 
-import { useCreateCostItem } from "@/features/cost-items/hooks";
-import { apiErrorMessage } from "@/services/http";
 import type { CostItem } from "@/types/cost-item";
 
 import type { BudgetSectionGroup } from "../../lib/budget-utils";
-import { parseBudgetAmount } from "../../lib/budget-utils";
+import { AddBudgetLineRow } from "./add-budget-line-row";
 import { BudgetTotalsRow } from "./budget-columns";
 import { BudgetLineRow } from "./budget-line-row";
 import { InlineBudgetInput } from "./inline-budget-input";
-
-interface AddBudgetLineRowProps {
-  eventId: string;
-  categoryId: string;
-  editable: boolean;
-}
-
-function AddBudgetLineRow({ eventId, categoryId, editable }: AddBudgetLineRowProps) {
-  const createItem = useCreateCostItem();
-  const [title, setTitle] = useState("");
-  const [amount, setAmount] = useState("");
-  const [error, setError] = useState<string | null>(null);
-
-  if (!editable) return null;
-
-  const commit = async () => {
-    const trimmedTitle = title.trim();
-    const parsedAmount = parseBudgetAmount(amount);
-    if (!trimmedTitle && !amount.trim()) return;
-    if (!trimmedTitle) {
-      setError("Enter a line name.");
-      return;
-    }
-    if (!parsedAmount) {
-      setError("Enter a valid planned amount.");
-      return;
-    }
-
-    setError(null);
-    try {
-      await createItem.mutateAsync({
-        event_id: eventId,
-        category_id: categoryId,
-        title: trimmedTitle,
-        expense_type: "Vendor",
-        budget_amount: parsedAmount,
-        vendor_required: true,
-      });
-      setTitle("");
-      setAmount("");
-    } catch (err) {
-      setError(apiErrorMessage(err, "Could not create budget line."));
-    }
-  };
-
-  return (
-    <div className="border-b border-border/60 px-4 py-2">
-      <div className="grid grid-cols-[minmax(0,1fr)_7rem] items-center gap-3 pl-6">
-        <Input
-          value={title}
-          onChange={(event) => setTitle(event.target.value)}
-          placeholder="Add budget line"
-          aria-label="New budget line name"
-          className="h-9"
-          onKeyDown={(event) => {
-            if (event.key === "Enter") {
-              event.preventDefault();
-              void commit();
-            }
-          }}
-        />
-        <Input
-          value={amount}
-          onChange={(event) => setAmount(event.target.value)}
-          placeholder="0.00"
-          inputMode="decimal"
-          aria-label="New budget line planned amount"
-          className="h-9 text-right"
-          onKeyDown={(event) => {
-            if (event.key === "Enter") {
-              event.preventDefault();
-              void commit();
-            }
-          }}
-          onBlur={() => void commit()}
-        />
-      </div>
-      {error ? (
-        <p className="mt-1 pl-6 text-xs text-danger" role="alert">
-          {error}
-        </p>
-      ) : null}
-    </div>
-  );
-}
 
 interface BudgetSectionBlockProps {
   group: BudgetSectionGroup;
@@ -108,6 +21,8 @@ interface BudgetSectionBlockProps {
   onOpenLine: (line: CostItem) => void;
   onArchiveSection: (sectionId: string) => void;
   onUpdateSectionName: (sectionId: string, name: string) => Promise<void>;
+  onAssignVendor: (line: CostItem) => void;
+  onRecordExpense: (line: CostItem) => void;
 }
 
 export function BudgetSectionBlock({
@@ -119,8 +34,11 @@ export function BudgetSectionBlock({
   onOpenLine,
   onArchiveSection,
   onUpdateSectionName,
+  onAssignVendor,
+  onRecordExpense,
 }: BudgetSectionBlockProps) {
   const [collapsed, setCollapsed] = useState(false);
+  const isEmpty = group.lines.length === 0;
 
   return (
     <section className="border-b border-border">
@@ -173,6 +91,11 @@ export function BudgetSectionBlock({
 
       {!collapsed ? (
         <>
+          {isEmpty ? (
+            <div className="border-b border-border/60 px-4 py-3 pl-14 text-sm text-muted">
+              No budget lines yet. Add the first line below.
+            </div>
+          ) : null}
           {group.lines.map((line) => (
             <BudgetLineRow
               key={line.id}
@@ -182,6 +105,8 @@ export function BudgetSectionBlock({
               editable={editable}
               selected={selectedLineId === line.id}
               onOpen={() => onOpenLine(line)}
+              onAssignVendor={() => onAssignVendor(line)}
+              onRecordExpense={() => onRecordExpense(line)}
             />
           ))}
           <AddBudgetLineRow eventId={eventId} categoryId={group.section.id} editable={editable} />

@@ -1,11 +1,17 @@
 "use client";
 
 import { useState } from "react";
-import { Lock, MoreHorizontal, Trash2 } from "lucide-react";
+import {
+  Lock,
+  MoreHorizontal,
+  PanelRightOpen,
+  Plus,
+  Receipt,
+  Trash2,
+} from "lucide-react";
 import { Button } from "@tribeos/ui";
 
 import { ArchiveCostItemDialog } from "@/features/cost-items/components/archive-cost-item-dialog";
-import { CostItemFormDialog } from "@/features/cost-items/components/cost-item-form-dialog";
 import { CostItemStatusBadge } from "@/features/cost-items/components/cost-item-status-badge";
 import { useUpdateCostItem } from "@/features/cost-items/hooks";
 import { apiErrorMessage } from "@/services/http";
@@ -23,19 +29,21 @@ interface BudgetLineRowProps {
   editable: boolean;
   selected: boolean;
   onOpen: () => void;
+  onAssignVendor: () => void;
+  onRecordExpense: () => void;
 }
 
 export function BudgetLineRow({
   line,
-  eventId,
   committedByLineId,
   editable,
   selected,
   onOpen,
+  onAssignVendor,
+  onRecordExpense,
 }: BudgetLineRowProps) {
   const updateItem = useUpdateCostItem();
   const [menuOpen, setMenuOpen] = useState(false);
-  const [editOpen, setEditOpen] = useState(false);
   const [archiveOpen, setArchiveOpen] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
@@ -44,6 +52,7 @@ export function BudgetLineRow({
   const canEdit = editable && !readOnly;
   const canEditBudget = canEdit && !budgetLocked;
   const totals = computeLineTotals(line, committedByLineId);
+  const canAssignVendor = line.expense_type === "Vendor" && !readOnly;
 
   const saveField = async (input: { title?: string; budget_amount?: string }) => {
     setError(null);
@@ -68,8 +77,9 @@ export function BudgetLineRow({
           }
         }}
         className={`grid cursor-pointer grid-cols-[minmax(0,1fr)_7rem_7rem_7rem_7rem_6rem_3rem] items-center gap-3 border-b border-border/60 px-4 py-2 transition-colors hover:bg-hover ${
-          selected ? "bg-primary/5" : ""
+          selected ? "bg-primary/5 ring-1 ring-inset ring-primary/30" : ""
         }`}
+        title="Open budget line detail"
       >
         <div
           className="flex min-w-0 items-center gap-2 pl-6"
@@ -142,16 +152,41 @@ export function BudgetLineRow({
                 aria-label="Close menu"
                 onClick={() => setMenuOpen(false)}
               />
-              <div className="absolute right-0 top-full z-20 mt-1 min-w-[10rem] rounded-md border border-border bg-card py-1 shadow-lg">
+              <div className="absolute right-0 top-full z-20 mt-1 min-w-[12rem] rounded-md border border-border bg-card py-1 shadow-lg">
                 <button
                   type="button"
-                  className="flex w-full px-3 py-2 text-left text-sm text-foreground hover:bg-hover"
+                  className="flex w-full items-center gap-2 px-3 py-2 text-left text-sm text-foreground hover:bg-hover"
                   onClick={() => {
                     setMenuOpen(false);
-                    setEditOpen(true);
+                    onOpen();
                   }}
                 >
-                  Full edit
+                  <PanelRightOpen className="size-4" />
+                  Open details
+                </button>
+                {canAssignVendor ? (
+                  <button
+                    type="button"
+                    className="flex w-full items-center gap-2 px-3 py-2 text-left text-sm text-foreground hover:bg-hover"
+                    onClick={() => {
+                      setMenuOpen(false);
+                      onAssignVendor();
+                    }}
+                  >
+                    <Plus className="size-4" />
+                    Assign vendor
+                  </button>
+                ) : null}
+                <button
+                  type="button"
+                  className="flex w-full items-center gap-2 px-3 py-2 text-left text-sm text-foreground hover:bg-hover"
+                  onClick={() => {
+                    setMenuOpen(false);
+                    onRecordExpense();
+                  }}
+                >
+                  <Receipt className="size-4" />
+                  Record expense
                 </button>
                 {canEdit ? (
                   <button
@@ -178,12 +213,6 @@ export function BudgetLineRow({
         </p>
       ) : null}
 
-      <CostItemFormDialog
-        open={editOpen}
-        onOpenChange={setEditOpen}
-        item={line}
-        defaultEventId={eventId}
-      />
       <ArchiveCostItemDialog open={archiveOpen} onOpenChange={setArchiveOpen} item={line} />
     </>
   );

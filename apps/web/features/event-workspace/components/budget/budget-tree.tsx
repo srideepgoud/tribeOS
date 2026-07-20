@@ -1,16 +1,13 @@
 "use client";
 
 import { useState } from "react";
-import { Input } from "@tribeos/ui";
-
 import { ArchiveCostCategoryDialog } from "@/features/cost-categories/components/archive-cost-category-dialog";
-import { useCreateCostCategory, useUpdateCostCategory } from "@/features/cost-categories/hooks";
-import { apiErrorMessage } from "@/services/http";
+import { useUpdateCostCategory } from "@/features/cost-categories/hooks";
 import type { CostCategory } from "@/types/cost-category";
 import type { CostItem } from "@/types/cost-item";
 
 import type { BudgetSectionGroup, BudgetTotals } from "../../lib/budget-utils";
-import { nextSectionDisplayOrder } from "../../lib/budget-utils";
+import { AddBudgetSectionRow } from "./add-budget-section-row";
 import { BudgetColumnHeader, BudgetTotalsRow } from "./budget-columns";
 import { BudgetSectionBlock } from "./budget-section-block";
 
@@ -23,62 +20,8 @@ interface BudgetTreeProps {
   editable: boolean;
   selectedLineId: string | null;
   onOpenLine: (line: CostItem) => void;
-}
-
-function AddSectionRow({
-  eventId,
-  categories,
-  editable,
-}: {
-  eventId: string;
-  categories: readonly CostCategory[];
-  editable: boolean;
-}) {
-  const createSection = useCreateCostCategory();
-  const [name, setName] = useState("");
-  const [error, setError] = useState<string | null>(null);
-
-  if (!editable) return null;
-
-  const commit = async () => {
-    const trimmed = name.trim();
-    if (!trimmed) return;
-    setError(null);
-    try {
-      await createSection.mutateAsync({
-        event_id: eventId,
-        name: trimmed,
-        display_order: nextSectionDisplayOrder(categories),
-      });
-      setName("");
-    } catch (err) {
-      setError(apiErrorMessage(err, "Could not create budget section."));
-    }
-  };
-
-  return (
-    <div className="border-t border-border px-4 py-3">
-      <Input
-        value={name}
-        onChange={(event) => setName(event.target.value)}
-        placeholder="+ Add budget section"
-        aria-label="New budget section name"
-        className="max-w-md"
-        onKeyDown={(event) => {
-          if (event.key === "Enter") {
-            event.preventDefault();
-            void commit();
-          }
-        }}
-        onBlur={() => void commit()}
-      />
-      {error ? (
-        <p className="mt-1 text-xs text-danger" role="alert">
-          {error}
-        </p>
-      ) : null}
-    </div>
-  );
+  onAssignVendor: (line: CostItem) => void;
+  onRecordExpense: (line: CostItem) => void;
 }
 
 export function BudgetTree({
@@ -90,6 +33,8 @@ export function BudgetTree({
   editable,
   selectedLineId,
   onOpenLine,
+  onAssignVendor,
+  onRecordExpense,
 }: BudgetTreeProps) {
   const updateSection = useUpdateCostCategory();
   const [archivingSection, setArchivingSection] = useState<CostCategory | null>(null);
@@ -116,11 +61,20 @@ export function BudgetTree({
             setArchivingSection(section);
           }}
           onUpdateSectionName={onUpdateSectionName}
+          onAssignVendor={onAssignVendor}
+          onRecordExpense={onRecordExpense}
         />
       ))}
 
-      <AddSectionRow eventId={eventId} categories={categories} editable={editable} />
-      <BudgetTotalsRow label="Event total" totals={eventTotals} emphasized />
+      <AddBudgetSectionRow
+        eventId={eventId}
+        categories={categories}
+        editable={editable}
+        emphasized={sections.length === 0}
+      />
+      {sections.length > 0 ? (
+        <BudgetTotalsRow label="Event total" totals={eventTotals} emphasized />
+      ) : null}
 
       <ArchiveCostCategoryDialog
         open={archivingSection !== null}
