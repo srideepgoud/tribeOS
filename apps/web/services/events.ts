@@ -3,6 +3,7 @@ import type {
   EventCreateInput,
   EventListResult,
   EventUpdateInput,
+  FinancialReadiness,
   ListEventsParams,
 } from "@/types/event";
 
@@ -39,5 +40,8 @@ export const eventsService = {
   },
   async remove(id: string): Promise<void> {
     await http.delete(`${BASE}/${id}`);
+  },
+  async financialReadiness(id: string): Promise<FinancialReadiness> {
+    return (await http.get<FinancialReadiness>(`${BASE}/${id}/financial-readiness`)).data;
   },
 };

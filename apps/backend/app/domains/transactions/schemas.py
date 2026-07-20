@@ -1,7 +1,7 @@
 """Pydantic schemas for Transactions API.
 
 ``status`` on PATCH dispatches to ``transition_status`` only.
-Phase 7 create allows Vendor Payment and Internal Expense only.
+Allocation writes use PUT replace set (ADR 0012) — not PATCH per line.
 """
 
 from __future__ import annotations
@@ -12,6 +12,7 @@ from decimal import Decimal
 
 from pydantic import BaseModel, ConfigDict, Field, field_serializer
 
+from app.domains.cost_allocations.schemas import CostAllocationLine
 from app.domains.transactions.models import PaymentMethod, TransactionStatus, TransactionType
 
 
@@ -19,14 +20,16 @@ class TransactionCreate(BaseModel):
     model_config = ConfigDict(str_strip_whitespace=True)
 
     event_id: uuid.UUID
-    cost_item_id: uuid.UUID
+    cost_item_id: uuid.UUID | None = None
     work_order_id: uuid.UUID | None = None
+    client_invoice_id: uuid.UUID | None = None
     transaction_type: TransactionType
     payment_method: PaymentMethod
     amount: Decimal = Field(gt=0, max_digits=14, decimal_places=2)
     transaction_date: date
     reference_number: str | None = Field(default=None, max_length=128)
     remarks: str | None = None
+    allocations: list[CostAllocationLine] | None = None
 
 
 class TransactionUpdate(BaseModel):
@@ -40,6 +43,7 @@ class TransactionUpdate(BaseModel):
     reference_number: str | None = Field(default=None, max_length=128)
     remarks: str | None = None
     status: TransactionStatus | None = None
+    allocations: list[CostAllocationLine] | None = None
 
 
 class TransactionRead(BaseModel):

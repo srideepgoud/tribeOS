@@ -15,8 +15,9 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from app.api.dependencies.current_user import CurrentUser
 from app.db.session import get_session
 from app.domains.events.models import EventStatus
-from app.domains.events.schemas import EventCreate, EventRead, EventUpdate
+from app.domains.events.schemas import EventCreate, EventRead, EventUpdate, FinancialReadiness
 from app.domains.events.service import EventService
+from app.domains.finance.financial_summary import EventFinancialSummary, FinancialSummaryService
 from app.shared.pagination import PageParams, pagination_params
 from app.shared.schemas import DataResponse, PaginatedResponse, build_pagination_meta
 
@@ -29,7 +30,14 @@ def get_event_service(
     return EventService(session)
 
 
+def get_financial_summary_service(
+    session: Annotated[AsyncSession, Depends(get_session)],
+) -> FinancialSummaryService:
+    return FinancialSummaryService(session)
+
+
 ServiceDep = Annotated[EventService, Depends(get_event_service)]
+SummaryDep = Annotated[FinancialSummaryService, Depends(get_financial_summary_service)]
 
 
 @router.get("", response_model=PaginatedResponse[EventRead])
@@ -57,6 +65,29 @@ async def list_events(
 async def get_event(event_id: uuid.UUID, service: ServiceDep) -> DataResponse[EventRead]:
     event = await service.get(event_id)
     return DataResponse[EventRead](data=EventRead.model_validate(event))
+
+
+@router.get(
+    "/{event_id}/financial-summary",
+    response_model=DataResponse[EventFinancialSummary],
+)
+async def get_event_financial_summary(
+    event_id: uuid.UUID, summary: SummaryDep
+) -> DataResponse[EventFinancialSummary]:
+    data = await summary.for_event(event_id)
+    return DataResponse[EventFinancialSummary](data=data)
+
+
+@router.get(
+    "/{event_id}/financial-readiness",
+    response_model=DataResponse[FinancialReadiness],
+)
+async def get_event_financial_readiness(
+    event_id: uuid.UUID, service: ServiceDep
+) -> DataResponse[FinancialReadiness]:
+    """Informational Settlement → Closed readiness. No mutations."""
+    data = await service.financial_readiness(event_id)
+    return DataResponse[FinancialReadiness](data=data)
 
 
 @router.post("", response_model=DataResponse[EventRead], status_code=status.HTTP_201_CREATED)

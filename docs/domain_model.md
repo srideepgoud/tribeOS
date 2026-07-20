@@ -126,6 +126,8 @@ Many Cost Categories
  ↓
 Many Cost Items
  ↓
+Many Client Invoices
+ ↓
 Many Documents
  ↓
 Many Transactions
@@ -184,6 +186,7 @@ Stores:
 - May or may not have a Vendor.
 - May or may not generate a Vendor Work Order.
 - Cannot be deleted after financial activity exists.
+- Actual Cost (`actual_amount`) is **Attributed Cost** only — derived from Cost Allocations, not from raw Transaction cash (ADR 0012).
 
 **Relationships**
 
@@ -198,7 +201,7 @@ Zero or One Vendor
  ↓
 Zero or One Vendor Work Order
  ↓
-Many Transactions
+Many Cost Allocations
 ```
 
 ---
@@ -288,11 +291,72 @@ Many Transactions
 
 ---
 
-### 8. Transaction
+### 8. Client Invoice
 
-**Purpose:** Immutable financial ledger. Represents movement of money.
+**Purpose:** Commercial billing aggregate. A claim against a Client for exactly one Event — what the client owes. Separate from cash movement.
 
 **Owner:** Finance
+
+**Responsibilities**
+
+- Invoice number, issue and due dates
+- Amounts (`amount`, `gst_amount`, `total_amount`)
+- Status (user actions and system-derived payment progress)
+- Notes
+- Link to Event and Client
+
+**Lifecycle**
+
+```
+Draft
+ ↓
+Issued
+ ↓
+Partially Paid   ← system-derived
+ ↓
+Paid             ← system-derived
+
+Cancelled
+```
+
+User actions: Draft → Issued; Draft|Issued → Cancelled (when allowed). **Partially Paid** and **Paid** are derived from Outstanding after Client Receipts Complete or Reverse — never set manually (ADR 0013).
+
+**Rules**
+
+- Belongs to exactly one Event and one Client (`client_id` must match `Event.client_id`).
+- Multiple Client Invoices per Event are allowed.
+- An invoice does not span multiple Events (v1).
+- `invoice_number` is system-generated, globally unique, and immutable after create.
+- Never hard-deleted; never archived. Terminal exit is **Cancelled** where allowed.
+- After Issued, commercial fields are locked; Paid invoices cannot be modified.
+- Client Receipts are Transactions (`transaction_type = Client Receipt`) linked via `client_invoice_id` — not a separate entity.
+
+**Relationships**
+
+```
+One Event
+ ↓
+Many Client Invoices
+
+One Client Invoice
+ ↓
+Many Transactions (Client Receipts)
+```
+
+---
+
+### 9. Transaction
+
+**Purpose:** Immutable financial ledger. Represents movement of money (cash posting). Does **not** own budget attribution.
+
+**Owner:** Finance
+
+**Responsibilities**
+
+- Cash amount, date, payment method, reference
+- Transaction type and status
+- Links required for cash context (Event; Vendor Work Order or Client Invoice when type requires)
+- Optional header `cost_item_id` as a transitional convenience only — not the source of truth for attribution (ADR 0012)
 
 **Types**
 
@@ -305,20 +369,68 @@ Many Transactions
 
 **Rules**
 
-- Transactions are immutable.
+- Cash fields are immutable after completion.
 - Corrections require a reversing transaction.
 - Amounts cannot be edited after completion.
+- A Completed Transaction may exist without Cost Item attribution.
+- Event is required on every Transaction (ADR 0011).
+- Client Receipts require a Client Invoice; `event_id` must match the invoice’s Event (ADR 0013).
+- Client Receipts do not use Cost Allocations (revenue cash, not cost attribution — ADR 0013).
 
 **Relationships**
 
-- Optional Event
-- Optional Cost Item
-- Optional Vendor Work Order
-- Optional Client
+```
+One Event
+ ↓
+Many Transactions
+
+One Transaction
+ ↓
+Many Cost Allocations
+ ↓
+Optional Vendor Work Order
+ ↓
+Optional Client Invoice
+```
 
 ---
 
-### 9. Document
+### 10. Cost Allocation
+
+**Purpose:** Canonical budget attribution of posted cash to one or more Cost Items. Answers “where did the money belong?”
+
+**Owner:** Finance
+
+**Responsibilities**
+
+- Cost Item assignment
+- Allocated amount
+- Attribution completeness relative to the parent Transaction
+
+**Rules**
+
+- Belongs to exactly one Transaction (child of Transaction aggregate — ADR 0009 / ADR 0012).
+- Never rewrites Transaction cash history.
+- Cost Allocations are the sole source of Cost Item attribution.
+- Attribution may be deferred after cash posting (Unattributed → Partially Attributed → Fully Attributed).
+- Allocations become immutable when the Event reaches **Closed** (Financial Close), not when Fully Attributed.
+- Not used for Client Receipt Transactions (ADR 0013).
+
+**Relationships**
+
+```
+One Transaction
+ ↓
+Many Cost Allocations
+
+One Cost Item
+ ↓
+Many Cost Allocations
+```
+
+---
+
+### 11. Document
 
 **Purpose:** Metadata describing a file stored in object storage. Actual binary files are stored in Supabase Storage.
 
@@ -351,7 +463,7 @@ Stores:
 
 ---
 
-### 10. Audit Log
+### 12. Audit Log
 
 **Purpose:** Immutable record of significant business actions.
 
@@ -395,7 +507,13 @@ User
 │             │              │              └── Transaction
 │             │              │
 │             │              ├── Transaction
+│             │              │      │
+│             │              │      └── Cost Allocation
 │             │              └── Document
+│             │
+│             ├── Client Invoice
+│             │      │
+│             │      └── Transaction (Client Receipt)
 │             │
 │             ├── Document
 │             └── Audit Log
@@ -413,11 +531,13 @@ User
 | Cost Category | Cost Category |
 | Vendor Details | Vendor |
 | Commercial Agreement | Vendor Work Order |
-| Financial Movement | Transaction |
+| Client Billing | Client Invoice |
+| Financial Movement (cash) | Transaction |
+| Budget Attribution | Cost Allocation |
 | File Metadata | Document |
 | Change History | Audit Log |
 
-Derived values such as Profit, Margin, Outstanding Balance and Budget Utilization are calculated from these entities and are never manually stored.
+Derived values such as Event Profit, Margin, Outstanding Balance, Budget Utilization, **Billed Revenue**, **Cash Received**, **Cash Spent**, and **Unattributed Spend** are calculated from these entities and are never manually stored. Cost Item **Actual Cost** is system-maintained Attributed Cost only (ADR 0012). **Billed Revenue** and **Cash Received** are distinct metrics (ADR 0013); do not use ambiguous “Client Revenue.”
 
 ---
 

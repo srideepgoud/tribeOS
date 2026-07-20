@@ -26,7 +26,7 @@ import { apiErrorMessage } from "@/services/http";
 import type { Event, EventStatus } from "@/types/event";
 import { isEventReadOnly } from "@/types/event";
 
-import { useCreateEvent, useUpdateEvent } from "../hooks";
+import { useCreateEvent, useEventFinancialReadiness, useUpdateEvent } from "../hooks";
 import {
   emptyEventForm,
   eventToFormValues,
@@ -34,6 +34,7 @@ import {
   eventFormSchema,
   type EventFormValues,
 } from "../schema";
+import { FinancialReadinessPanel } from "./financial-readiness-panel";
 import { StatusTransitionControl } from "./status-transition-control";
 
 interface EventFormDialogProps {
@@ -49,6 +50,10 @@ export function EventFormDialog({ open, onOpenChange, event }: EventFormDialogPr
   const updateEvent = useUpdateEvent();
   const activeMutation = isEdit ? updateEvent : createEvent;
   const [pendingStatus, setPendingStatus] = useState<EventStatus | "">("");
+
+  const isSettlement = event?.status === "Settlement";
+  const readinessQuery = useEventFinancialReadiness(event?.id, Boolean(open && isSettlement));
+  const canClose = readinessQuery.data?.ready === true;
 
   const clientsQuery = useClients({ page: 1, page_size: 100, sort: "company_name" });
   const clients = clientsQuery.data?.data ?? [];
@@ -74,7 +79,14 @@ export function EventFormDialog({ open, onOpenChange, event }: EventFormDialogPr
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [open, event]);
 
+  useEffect(() => {
+    if (pendingStatus === "Closed" && !canClose) {
+      setPendingStatus("");
+    }
+  }, [pendingStatus, canClose]);
+
   const onSubmit = handleSubmit(async (values) => {
+    if (pendingStatus === "Closed" && !canClose) return;
     const payload = toEventPayload(values);
     if (event) {
       const input = {
@@ -176,12 +188,23 @@ export function EventFormDialog({ open, onOpenChange, event }: EventFormDialogPr
             <Textarea {...register("notes")} placeholder="Planning notes" disabled={readOnly} />
           </Field>
 
+          {isEdit && event && isSettlement ? (
+            <FinancialReadinessPanel
+              readiness={readinessQuery.data}
+              isLoading={readinessQuery.isLoading}
+              errorMessage={
+                readinessQuery.error ? apiErrorMessage(readinessQuery.error) : null
+              }
+            />
+          ) : null}
+
           {isEdit && event && !readOnly ? (
             <StatusTransitionControl
               current={event.status}
               value={pendingStatus}
               onChange={setPendingStatus}
               disabled={submitting}
+              allowClose={!isSettlement || canClose}
             />
           ) : null}
 

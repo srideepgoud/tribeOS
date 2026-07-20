@@ -14,6 +14,8 @@ from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.domains.cost_items.models import CostItem, ExpenseType
 from app.domains.cost_items.repository import CostItemRepository
+from app.domains.events.models import EventStatus
+from app.domains.events.repository import EventRepository
 from app.domains.vendor_work_orders.models import VendorWorkOrder, VendorWorkOrderStatus
 from app.domains.vendor_work_orders.repository import VendorWorkOrderRepository
 from app.domains.vendor_work_orders.schemas import VendorWorkOrderCreate, VendorWorkOrderUpdate
@@ -63,6 +65,7 @@ class VendorWorkOrderService:
         self._repo = VendorWorkOrderRepository(session)
         self._vendors = VendorRepository(session)
         self._cost_items = CostItemRepository(session)
+        self._events = EventRepository(session)
 
     async def get(self, work_order_id: uuid.UUID) -> VendorWorkOrder:
         return await self._repo.get_required(work_order_id)
@@ -93,6 +96,7 @@ class VendorWorkOrderService:
         data = normalize_vendor_work_order_fields(payload.model_dump())
         await self._require_non_archived_vendor(data["vendor_id"])
         cost_item = await self._require_vendor_cost_item(data["cost_item_id"])
+        await self._assert_event_financially_mutable(cost_item.event_id)
         await self._assert_no_active_work_order(data["cost_item_id"])
 
         agreed = data.get("agreed_amount")
@@ -132,6 +136,8 @@ class VendorWorkOrderService:
     ) -> VendorWorkOrder:
         """Field updates only. Never changes ``status``, ``work_order_number``, or ``version``."""
         work_order = await self.get(work_order_id)
+        cost_item = await self._require_vendor_cost_item(work_order.cost_item_id)
+        await self._assert_event_financially_mutable(cost_item.event_id)
         self._assert_commercially_mutable(work_order)
 
         changes = normalize_vendor_work_order_fields(
@@ -164,6 +170,10 @@ class VendorWorkOrderService:
         actor: uuid.UUID | None = None,
     ) -> VendorWorkOrder:
         work_order = await self.get(work_order_id)
+        cost_item = await self._cost_items.get_by_id(work_order.cost_item_id)
+        if cost_item is None:
+            raise NotFoundError("Cost Item not found.")
+        await self._assert_event_financially_mutable(cost_item.event_id)
         current = work_order.status
         if new_status == current:
             return work_order
@@ -188,6 +198,19 @@ class VendorWorkOrderService:
         if work_order.status in _COMMERCIAL_LOCKED:
             raise InvalidStateError(
                 "Commercial fields are immutable once the Vendor Work Order is Issued."
+            )
+
+    async def _assert_event_financially_mutable(self, event_id: uuid.UUID) -> None:
+        event = await self._events.get_by_id(event_id)
+        if event is None:
+            raise NotFoundError("Event not found.")
+        if event.status == EventStatus.CLOSED:
+            raise InvalidStateError(
+                "Vendor Work Orders cannot be modified after Financial Close (Event Closed)."
+            )
+        if event.status == EventStatus.CANCELLED:
+            raise InvalidStateError(
+                "Vendor Work Orders cannot be modified while the Event is Cancelled."
             )
 
     async def _require_non_archived_vendor(self, vendor_id: uuid.UUID) -> None:

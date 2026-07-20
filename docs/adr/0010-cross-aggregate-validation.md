@@ -2,7 +2,7 @@
 
 **Status:** Accepted  
 **Date:** 2026-07-20  
-**Related:** ADR 0007 (validation responsibilities); ADR 0009 (aggregate ownership); ADR 0011 (transaction financial immutability); `docs/domain_template.md` §5–6, §12; `docs/business_rules.md`; `docs/state_machine.md`
+**Related:** ADR 0007 (validation responsibilities); ADR 0009 (aggregate ownership); ADR 0011 (transaction financial immutability); ADR 0012 (financial posting and attribution); ADR 0013 (Client Invoice and Receipt lifecycle); `docs/domain_template.md` §5–6, §12; `docs/business_rules.md`; `docs/state_machine.md`
 
 ## Context
 
@@ -71,7 +71,7 @@ Only **services** may orchestrate across aggregates, for example:
 
 - Vendor ↔ Vendor Work Order (archive guard, create-time vendor check)
 - Cost Item ↔ Transaction (actuals materialization — finance phases)
-- Client Invoice ↔ Transaction (receipt linkage — later phases)
+- Client Invoice ↔ Transaction (receipt linkage — ADR 0013)
 - Event ↔ Settlement side effects (Event status owns settlement — later phases)
 
 The service that **owns the invariant** performs the check (ADR 0009). Child write APIs remain forbidden; side effects on foreign aggregates use that aggregate’s repository write methods only when the owning service explicitly updates a field it is allowed to maintain (e.g. system-maintained `actual_amount` per ADR 0008).

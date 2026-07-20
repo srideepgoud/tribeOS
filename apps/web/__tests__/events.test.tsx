@@ -6,6 +6,7 @@ import { describe, expect, it, vi } from "vitest";
 import { EventFormDialog } from "@/features/events/components/event-form-dialog";
 import { EventTable } from "@/features/events/components/event-table";
 import { EventsEmptyState } from "@/features/events/components/events-empty-state";
+import { FinancialReadinessPanel } from "@/features/events/components/financial-readiness-panel";
 import type { Event } from "@/types/event";
 
 vi.mock("@/features/clients/hooks", () => ({
@@ -71,5 +72,26 @@ describe("events feature", () => {
     renderWithClient(<EventFormDialog open onOpenChange={() => {}} />);
     fireEvent.click(screen.getByRole("button", { name: /create event/i }));
     expect(await screen.findByText("Event name is required")).toBeInTheDocument();
+  });
+
+  it("renders financial readiness checks", () => {
+    render(
+      <FinancialReadinessPanel
+        readiness={{
+          ready: false,
+          checks: {
+            outstanding: false,
+            unattributed_spend: true,
+            pending_transactions: true,
+          },
+          blocking_reasons: ["Outstanding invoices: ₹50000.00"],
+        }}
+        isLoading={false}
+      />,
+    );
+    expect(screen.getByText("Financial readiness")).toBeInTheDocument();
+    expect(screen.getByText("Outstanding invoices remain")).toBeInTheDocument();
+    expect(screen.getByText("All spend allocated")).toBeInTheDocument();
+    expect(screen.getByText("Outstanding invoices: ₹50000.00")).toBeInTheDocument();
   });
 });

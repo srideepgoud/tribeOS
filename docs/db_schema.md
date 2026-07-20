@@ -186,7 +186,7 @@ Many Cost Items
 - `expense_type`
 - `budget_amount`
 - `negotiated_amount`
-- `actual_amount`
+- `actual_amount` — system-maintained **Attributed Cost** only (ADR 0012); not Cash Spent
 - `vendor_required`
 - `status`
 - `notes`
@@ -219,8 +219,6 @@ Cost Item
 Many Cost Item Versions
  ↓
 Optional Vendor Work Order
- ↓
-Many Transactions
  ↓
 Many Cost Allocations
  ↓
@@ -330,14 +328,14 @@ Many Documents
 
 ## 10. client_invoices
 
-**Purpose:** Invoices issued to Clients. Separate from financial transactions.
+**Purpose:** Invoices issued to Clients. Commercial billing aggregate — separate from cash Transactions (ADR 0013).
 
 **Columns**
 
 - `id`
-- `event_id` (FK)
-- `client_id` (FK)
-- `invoice_number` (Unique)
+- `event_id` (FK) — exactly one Event per invoice (v1); multiple invoices per Event allowed
+- `client_id` (FK) — must match `Event.client_id`
+- `invoice_number` (Unique) — system-generated, globally unique, immutable after create
 - `invoice_date`
 - `due_date`
 - `amount`
@@ -350,8 +348,8 @@ Many Documents
 
 - Draft
 - Issued
-- Partially Paid
-- Paid
+- Partially Paid — system-derived from Outstanding (ADR 0013)
+- Paid — system-derived from Outstanding (ADR 0013)
 - Cancelled
 
 **Relationships**
@@ -362,19 +360,24 @@ Client Invoice
 Many Transactions (Client Receipts)
 ```
 
+**Rules**
+
+- Never hard-deleted; never archived. Cancel only where state machine allows.
+- Client Receipts are rows in `transactions` with `transaction_type = Client Receipt` and required `client_invoice_id` — not a separate table.
+
 ---
 
 ## 11. transactions
 
-**Purpose:** Immutable financial ledger. Represents every movement of money.
+**Purpose:** Immutable financial ledger. Represents every movement of money (cash posting). Does not own budget attribution.
 
 **Columns**
 
 - `id`
-- `event_id` (FK)
-- `cost_item_id` (FK, Nullable)
+- `event_id` (FK, Required)
+- `cost_item_id` (FK, Nullable) — transitional convenience only; not the source of truth for attribution (ADR 0012); not used for Client Receipts (ADR 0013)
 - `work_order_id` (FK, Nullable)
-- `client_invoice_id` (FK, Nullable)
+- `client_invoice_id` (FK, Nullable) — **required** when `transaction_type = Client Receipt`; must reference an invoice on the same Event (ADR 0013)
 - `reverses_transaction_id` (FK → `transactions.id`, Nullable)
 - `transaction_type`
 - `payment_method`
@@ -383,6 +386,20 @@ Many Transactions (Client Receipts)
 - `reference_number`
 - `status`
 - `remarks`
+
+**`cost_item_id` (transitional)**
+
+- Nullable.
+- May be supplied for single-Cost-Item Completions as a convenience (expense types).
+- Must not be used to compute Cost Item Actual Cost once Cost Allocations are live (ADR 0012).
+- **Not applicable to Client Receipts** — Client Receipts do not carry Cost Allocations (ADR 0013).
+- **Auto-materialization invariant:** When a Transaction is Completed and a single `cost_item_id` is supplied and no allocation payload exists, `TransactionService` **SHALL** create exactly one Cost Allocation with that `cost_item_id` and `allocated_amount = Transaction.amount` (expense Completions only).
+
+**`client_invoice_id`**
+
+- Nullable on the table; required for Client Receipt.
+- Must match the invoice’s Event (`transactions.event_id = client_invoices.event_id`).
+- Overpayment of the linked invoice is forbidden at Completion (ADR 0013).
 
 **`reverses_transaction_id`**
 
@@ -417,9 +434,12 @@ Many Transactions (Client Receipts)
 
 **Rules**
 
-- Immutable.
-- Never edit completed transactions.
+- Cash fields immutable after completion.
+- Never edit completed cash amounts in place.
 - Corrections require reversal transactions.
+- Completed expense Transactions may exist without Cost Allocations (unattributed).
+- Budget attribution lives on Cost Allocations (ADR 0012) for expense types only.
+- Client Receipt Completes/Reversals recalculate invoice Outstanding and derived invoice status (ADR 0013).
 
 **Relationships**
 
@@ -435,20 +455,35 @@ Many Documents
 
 ## 12. cost_allocations
 
-**Purpose:** Supports shared expenses.
+**Purpose:** Canonical budget attribution of Transaction cash to Cost Items. Supports deferred attribution, shared expenses, and single-Cost-Item materialization.
 
-**Example:** One invoice split across multiple Cost Items.
+**Example:** One invoice split across multiple Cost Items; or one advance attributed later.
 
 **Columns**
 
 - `id`
-- `transaction_id` (FK)
-- `cost_item_id` (FK)
-- `allocated_amount`
+- `transaction_id` (FK, Required)
+- `cost_item_id` (FK, Required)
+- `allocated_amount` (Required)
 
 **Rules**
 
 - One transaction can fund multiple Cost Items.
+- Child of Transaction aggregate — no independent write APIs that bypass `TransactionService` (ADR 0009 / ADR 0012).
+- Sole source of Cost Item attribution for Actual Cost.
+- Sum of allocations must never exceed `Transaction.amount`.
+- When Fully Attributed: `Σ allocated_amount = Transaction.amount`.
+- Editable while the parent Event is not **Closed**; immutable after Financial Close (Event Closed).
+- Cannot reference archived Cost Items.
+- Not used for Client Receipt Transactions (ADR 0013).
+
+**Attribution states (derived, not a stored enum required by schema)**
+
+```text
+Unattributed          → Σ = 0
+Partially Attributed  → 0 < Σ < Transaction.amount
+Fully Attributed      → Σ = Transaction.amount
+```
 
 ---
 
@@ -613,13 +648,13 @@ Vendor
 | Client Details | Client |
 | Event Details | Event |
 | Cost Categories | Cost Category |
-| Budget & Actual Cost | Cost Item |
+| Budget & Attributed Actual Cost | Cost Item |
 | Budget History | Cost Item Version |
 | Vendor Details | Vendor |
 | Commercial Agreement | Vendor Work Order |
 | Client Billing | Client Invoice |
-| Financial Ledger | Transaction |
-| Shared Expense Allocation | Cost Allocation |
+| Financial Ledger (cash) | Transaction |
+| Budget Attribution | Cost Allocation |
 | Scope Changes | Change Request |
 | File Metadata | Document |
 | Change History | Audit Log |
@@ -633,11 +668,16 @@ The following are **NEVER** manually stored:
 - Budget Utilization
 - Outstanding Client Balance
 - Outstanding Vendor Liability
-- Total Spend
+- Total Spend / Cash Spent
+- Cash Received
+- Billed Revenue
+- Unattributed Spend
 - Cost Variance
 - Savings
 
 These are calculated from: Events, Cost Items, Transactions, Client Invoices, Cost Allocations.
+
+**Cash Spent** is derived from Completed expense Transactions (Vendor Payment, Internal Expense). **Cash Received** is derived from Completed Client Receipts. **Billed Revenue** is derived from Issued / Partially Paid / Paid Client Invoices. **Attributed Cost** (`cost_items.actual_amount`) is derived from Cost Allocations. Expense metrics: ADR 0012. Revenue metrics: ADR 0013.
 
 ---
 
@@ -654,8 +694,10 @@ These are calculated from: Events, Cost Items, Transactions, Client Invoices, Co
 **Never Delete**
 
 - Transactions
+- Cost Allocations (immutable after Event Closed; corrections via Transaction reversal)
 - Cost Item Versions
 - Audit Logs
+- Client Invoices (Cancel only — ADR 0013)
 
 **Conditional**
 

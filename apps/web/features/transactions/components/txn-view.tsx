@@ -10,7 +10,7 @@ import { apiErrorMessage } from "@/services/http";
 import type { Transaction, TransactionStatus } from "@/types/transaction";
 import { TRANSACTION_STATUSES } from "@/types/transaction";
 
-import { useTransactions } from "../hooks";
+import { useEventFinancialSummary, useTransactions } from "../hooks";
 import { TransactionsEmptyState } from "./txn-empty-state";
 import { TransactionsErrorState } from "./txn-error-state";
 import { TransactionFormDialog } from "./txn-form-dialog";
@@ -23,6 +23,7 @@ export function TransactionsView() {
   const [page, setPage] = useState(1);
   const [search, setSearch] = useState("");
   const [statusFilter, setStatusFilter] = useState<TransactionStatus | "all">("all");
+  const [eventFilter, setEventFilter] = useState<string>("all");
   const [createOpen, setCreateOpen] = useState(false);
   const [editing, setEditing] = useState<Transaction | null>(null);
 
@@ -33,12 +34,14 @@ export function TransactionsView() {
       q: search.trim() || undefined,
       sort: "-created_at",
       status: statusFilter === "all" ? undefined : statusFilter,
+      event_id: eventFilter === "all" ? undefined : eventFilter,
     }),
-    [page, search, statusFilter],
+    [page, search, statusFilter, eventFilter],
   );
   const query = useTransactions(params);
   const eventsQuery = useEvents({ page: 1, page_size: 100, sort: "name" });
   const costItemsQuery = useCostItems({ page: 1, page_size: 100, sort: "title" });
+  const summaryQuery = useEventFinancialSummary(eventFilter === "all" ? undefined : eventFilter);
 
   const eventNames = useMemo(() => {
     const map: Record<string, string> = {};
@@ -54,7 +57,9 @@ export function TransactionsView() {
 
   const pagination = query.data?.meta.pagination;
   const transactions = query.data?.data ?? [];
-  const hasFilters = search.trim().length > 0 || statusFilter !== "all";
+  const hasFilters =
+    search.trim().length > 0 || statusFilter !== "all" || eventFilter !== "all";
+  const summary = summaryQuery.data;
 
   return (
     <div className="flex flex-col gap-6">
@@ -68,6 +73,17 @@ export function TransactionsView() {
           New transaction
         </Button>
       </header>
+
+      {summary ? (
+        <div className="grid gap-3 sm:grid-cols-3 lg:grid-cols-6">
+          <Metric label="Billed Revenue" value={summary.billed_revenue} />
+          <Metric label="Cash Received" value={summary.cash_received} />
+          <Metric label="Outstanding" value={summary.outstanding} />
+          <Metric label="Cash Spent" value={summary.cash_spent} />
+          <Metric label="Attributed Cost" value={summary.attributed_cost} />
+          <Metric label="Unattributed Spend" value={summary.unattributed_spend} />
+        </div>
+      ) : null}
 
       <div className="flex flex-col gap-3 sm:flex-row sm:items-center">
         <div className="relative max-w-sm flex-1">
@@ -83,6 +99,25 @@ export function TransactionsView() {
             className="pl-9"
           />
         </div>
+        <Select
+          value={eventFilter}
+          onValueChange={(value) => {
+            setEventFilter(value);
+            setPage(1);
+          }}
+        >
+          <SelectTrigger className="w-[200px]" aria-label="Filter by event">
+            <SelectValue placeholder="Event" />
+          </SelectTrigger>
+          <SelectContent>
+            <SelectItem value="all">All events</SelectItem>
+            {(eventsQuery.data?.data ?? []).map((event) => (
+              <SelectItem key={event.id} value={event.id}>
+                {event.name}
+              </SelectItem>
+            ))}
+          </SelectContent>
+        </Select>
         <Select
           value={statusFilter}
           onValueChange={(value) => {
@@ -161,6 +196,15 @@ export function TransactionsView() {
         onOpenChange={(open) => (!open ? setEditing(null) : undefined)}
         transaction={editing}
       />
+    </div>
+  );
+}
+
+function Metric({ label, value }: { label: string; value: string }) {
+  return (
+    <div className="rounded-md border border-border px-4 py-3">
+      <p className="text-xs uppercase tracking-wide text-muted">{label}</p>
+      <p className="text-lg font-semibold text-foreground">{value}</p>
     </div>
   );
 }

@@ -10,6 +10,8 @@ interface StatusTransitionControlProps {
   value: EventStatus | "";
   onChange: (next: EventStatus | "") => void;
   disabled?: boolean;
+  /** When false, Settlement → Closed is not selectable (backend readiness). */
+  allowClose?: boolean;
 }
 
 export function StatusTransitionControl({
@@ -17,14 +19,25 @@ export function StatusTransitionControl({
   value,
   onChange,
   disabled,
+  allowClose = true,
 }: StatusTransitionControlProps) {
-  const allowed = ALLOWED_TRANSITIONS[current];
+  const allowed = ALLOWED_TRANSITIONS[current].filter(
+    (status) => status !== "Closed" || allowClose,
+  );
 
-  if (allowed.length === 0) {
+  if (ALLOWED_TRANSITIONS[current].length === 0) {
     return (
       <p className="text-sm text-muted">
         Status <span className="font-medium text-foreground">{current}</span> is terminal — no further
         transitions.
+      </p>
+    );
+  }
+
+  if (allowed.length === 0) {
+    return (
+      <p className="text-sm text-muted">
+        Close Event is unavailable until financial readiness checks pass.
       </p>
     );
   }
@@ -43,12 +56,14 @@ export function StatusTransitionControl({
         <SelectContent>
           {allowed.map((status) => (
             <SelectItem key={status} value={status}>
-              {status}
+              {status === "Closed" ? "Close Event" : status}
             </SelectItem>
           ))}
         </SelectContent>
       </Select>
-      <p className="text-xs text-muted">Status changes follow the Event lifecycle and cannot be skipped.</p>
+      <p className="text-xs text-muted">
+        Status changes follow the Event lifecycle and cannot be skipped.
+      </p>
     </div>
   );
 }

@@ -23,6 +23,7 @@ from app.domains.cost_items.models import (
 from app.domains.cost_items.repository import CostItemRepository
 from app.domains.cost_items.schemas import CostItemCreate, CostItemUpdate
 from app.domains.cost_items.validators import normalize_cost_item_fields
+from app.domains.events.models import EventStatus
 from app.domains.events.repository import EventRepository
 from app.shared.errors import DomainValidationError, InvalidStateError, NotFoundError
 from app.shared.pagination import PageParams
@@ -191,6 +192,14 @@ class CostItemService:
         event = await self._events.get_by_id(event_id)
         if event is None:
             raise NotFoundError("Event not found.")
+        if event.status == EventStatus.CLOSED:
+            raise InvalidStateError(
+                "Cost Items cannot be modified after Financial Close (Event Closed)."
+            )
+        if event.status == EventStatus.CANCELLED:
+            raise InvalidStateError(
+                "Cost Items cannot be modified while the Event is Cancelled."
+            )
 
     async def _require_category_on_event(self, category_id: uuid.UUID, event_id: uuid.UUID) -> None:
         category = await self._categories.get_by_id(category_id)

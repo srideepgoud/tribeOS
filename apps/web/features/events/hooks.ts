@@ -6,11 +6,20 @@ import { eventsService } from "@/services/events";
 import type { EventCreateInput, EventUpdateInput, ListEventsParams } from "@/types/event";
 
 const EVENTS_KEY = "events";
+const READINESS_KEY = "event-financial-readiness";
 
 export function useEvents(params: ListEventsParams) {
   return useQuery({
     queryKey: [EVENTS_KEY, params],
     queryFn: () => eventsService.list(params),
+  });
+}
+
+export function useEventFinancialReadiness(eventId: string | undefined, enabled = true) {
+  return useQuery({
+    queryKey: [READINESS_KEY, eventId],
+    queryFn: () => eventsService.financialReadiness(eventId!),
+    enabled: Boolean(eventId) && enabled,
   });
 }
 
@@ -27,7 +36,10 @@ export function useUpdateEvent() {
   return useMutation({
     mutationFn: ({ id, input }: { id: string; input: EventUpdateInput }) =>
       eventsService.update(id, input),
-    onSuccess: () => queryClient.invalidateQueries({ queryKey: [EVENTS_KEY] }),
+    onSuccess: (_data, variables) => {
+      void queryClient.invalidateQueries({ queryKey: [EVENTS_KEY] });
+      void queryClient.invalidateQueries({ queryKey: [READINESS_KEY, variables.id] });
+    },
   });
 }
 

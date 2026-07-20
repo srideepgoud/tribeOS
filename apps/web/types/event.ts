@@ -65,6 +65,19 @@ export interface EventListResult {
   meta: { pagination: PaginationMeta };
 }
 
+/** Settlement → Closed readiness (Phase 10). Informational only. */
+export interface FinancialReadinessChecks {
+  readonly outstanding: boolean;
+  readonly unattributed_spend: boolean;
+  readonly pending_transactions: boolean;
+}
+
+export interface FinancialReadiness {
+  readonly ready: boolean;
+  readonly checks: FinancialReadinessChecks;
+  readonly blocking_reasons: string[];
+}
+
 /** Mirrors backend ALLOWED_TRANSITIONS for UI affordances. */
 export const ALLOWED_TRANSITIONS: Record<EventStatus, readonly EventStatus[]> = {
   Draft: ["Planning", "Cancelled"],

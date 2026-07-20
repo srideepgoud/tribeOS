@@ -21,6 +21,7 @@ import {
   Textarea,
 } from "@tribeos/ui";
 
+import { useClientInvoices } from "@/features/client-invoices/hooks";
 import { useCostItems } from "@/features/cost-items/hooks";
 import { useEvents } from "@/features/events/hooks";
 import { useVendorWorkOrders } from "@/features/vendor-work-orders/hooks";
@@ -30,7 +31,7 @@ import {
   ALLOWED_TRANSACTION_TRANSITIONS,
   isPendingEditable,
   PAYMENT_METHODS,
-  PHASE7_CREATE_TYPES,
+  PHASE9_CREATE_TYPES,
 } from "@/types/transaction";
 
 import { useCreateTransaction, useUpdateTransaction } from "../hooks";
@@ -40,6 +41,7 @@ import {
   transactionFormSchema,
   type TransactionFormValues,
 } from "../schema";
+import { AllocationEditor } from "./allocation-editor";
 
 interface TransactionFormDialogProps {
   open: boolean;
@@ -48,17 +50,25 @@ interface TransactionFormDialogProps {
 }
 
 function toFormValues(txn: Transaction): TransactionFormValues {
+  const createType =
+    txn.transaction_type === "Vendor Payment" ||
+    txn.transaction_type === "Internal Expense" ||
+    txn.transaction_type === "Client Receipt"
+      ? txn.transaction_type
+      : "Internal Expense";
   return {
     event_id: txn.event_id,
     cost_item_id: txn.cost_item_id ?? "",
     work_order_id: txn.work_order_id ?? "",
-    transaction_type:
-      txn.transaction_type === "Vendor Payment" ? "Vendor Payment" : "Internal Expense",
+    client_invoice_id: txn.client_invoice_id ?? "",
+    transaction_type: createType,
     payment_method: txn.payment_method,
     amount: txn.amount,
     transaction_date: txn.transaction_date,
     reference_number: txn.reference_number ?? "",
     remarks: txn.remarks ?? "",
+    use_shared_allocations: false,
+    allocations: [],
   };
 }
 
@@ -77,10 +87,12 @@ export function TransactionFormDialog({
   const eventsQuery = useEvents({ page: 1, page_size: 100, sort: "name" });
   const costItemsQuery = useCostItems({ page: 1, page_size: 100, sort: "title" });
   const workOrdersQuery = useVendorWorkOrders({ page: 1, page_size: 100, sort: "-created_at" });
+  const invoicesQuery = useClientInvoices({ page: 1, page_size: 100, sort: "-created_at" });
 
   const events = eventsQuery.data?.data ?? [];
   const costItems = costItemsQuery.data?.data ?? [];
   const workOrders = workOrdersQuery.data?.data ?? [];
+  const invoices = invoicesQuery.data?.data ?? [];
 
   const {
     register,
@@ -97,6 +109,9 @@ export function TransactionFormDialog({
 
   const txnType = watch("transaction_type");
   const costItemId = watch("cost_item_id");
+  const useShared = watch("use_shared_allocations");
+  const allocations = watch("allocations");
+  const amount = watch("amount");
 
   const filteredWorkOrders = useMemo(
     () =>
@@ -116,7 +131,7 @@ export function TransactionFormDialog({
   const onSubmit = handleSubmit(async (values) => {
     if (transaction) {
       const input: {
-        cost_item_id?: string;
+        cost_item_id?: string | null;
         work_order_id?: string | null;
         payment_method?: TransactionFormValues["payment_method"];
         amount?: string;
@@ -124,6 +139,7 @@ export function TransactionFormDialog({
         reference_number?: string | null;
         remarks?: string | null;
         status?: TransactionStatus;
+        allocations?: { cost_item_id: string; allocated_amount: string }[] | null;
       } = {};
       if (pendingEditable) {
         const payload = toTransactionPayload(values);
@@ -134,6 +150,7 @@ export function TransactionFormDialog({
         input.transaction_date = payload.transaction_date;
         input.reference_number = payload.reference_number;
         input.remarks = payload.remarks;
+        input.allocations = payload.allocations;
       }
       if (pendingStatus) input.status = pendingStatus;
       await updateTxn.mutateAsync({ id: transaction.id, input });
@@ -156,7 +173,7 @@ export function TransactionFormDialog({
           <DialogDescription>
             {isEdit
               ? `${transaction?.transaction_type ?? ""} · ${transaction?.status ?? ""}`
-              : "Vendor Payment or Internal Expense (Phase 7)."}
+              : "Vendor Payment, Internal Expense, or Client Receipt."}
           </DialogDescription>
         </DialogHeader>
 
@@ -172,13 +189,20 @@ export function TransactionFormDialog({
                     onValueChange={(value) => {
                       field.onChange(value);
                       if (value === "Internal Expense") setValue("work_order_id", "");
+                      if (value === "Client Receipt") {
+                        setValue("work_order_id", "");
+                        setValue("cost_item_id", "");
+                        setValue("use_shared_allocations", false);
+                        setValue("allocations", []);
+                      }
+                      if (value !== "Client Receipt") setValue("client_invoice_id", "");
                     }}
                   >
                     <SelectTrigger>
                       <SelectValue />
                     </SelectTrigger>
                     <SelectContent>
-                      {PHASE7_CREATE_TYPES.map((type) => (
+                      {PHASE9_CREATE_TYPES.map((type) => (
                         <SelectItem key={type} value={type}>
                           {type}
                         </SelectItem>
@@ -215,60 +239,125 @@ export function TransactionFormDialog({
             />
           </Field>
 
-          <Field label="Cost Item" required error={errors.cost_item_id?.message}>
-            <Controller
-              name="cost_item_id"
-              control={control}
-              render={({ field }) => (
-                <Select
-                  value={field.value || undefined}
-                  onValueChange={(value) => {
-                    field.onChange(value);
-                    setValue("work_order_id", "");
-                  }}
-                  disabled={isEdit && !pendingEditable}
-                >
-                  <SelectTrigger>
-                    <SelectValue placeholder="Select cost item" />
-                  </SelectTrigger>
-                  <SelectContent>
-                    {costItems.map((item) => (
-                      <SelectItem key={item.id} value={item.id}>
-                        {item.title}
-                      </SelectItem>
-                    ))}
-                  </SelectContent>
-                </Select>
-              )}
-            />
-          </Field>
-
-          {txnType === "Vendor Payment" || transaction?.transaction_type === "Vendor Payment" ? (
-            <Field label="Work Order" required error={errors.work_order_id?.message}>
+          {txnType === "Client Receipt" || transaction?.transaction_type === "Client Receipt" ? (
+            <Field label="Client Invoice" required error={errors.client_invoice_id?.message}>
               <Controller
-                name="work_order_id"
+                name="client_invoice_id"
                 control={control}
                 render={({ field }) => (
                   <Select
                     value={field.value || undefined}
                     onValueChange={field.onChange}
-                    disabled={isEdit && !pendingEditable}
+                    disabled={isEdit}
                   >
                     <SelectTrigger>
-                      <SelectValue placeholder="Select work order" />
+                      <SelectValue placeholder="Select invoice" />
                     </SelectTrigger>
                     <SelectContent>
-                      {filteredWorkOrders.map((wo) => (
-                        <SelectItem key={wo.id} value={wo.id}>
-                          {wo.work_order_number}
-                        </SelectItem>
-                      ))}
+                      {invoices
+                        .filter((inv) => !watch("event_id") || inv.event_id === watch("event_id"))
+                        .filter((inv) => inv.status !== "Draft" && inv.status !== "Cancelled")
+                        .map((inv) => (
+                          <SelectItem key={inv.id} value={inv.id}>
+                            {inv.invoice_number} · outstanding {inv.outstanding ?? "—"}
+                          </SelectItem>
+                        ))}
                     </SelectContent>
                   </Select>
                 )}
               />
             </Field>
-          ) : null}
+          ) : (
+            <>
+              <label className="flex items-center gap-2 text-sm text-foreground">
+                <input
+                  type="checkbox"
+                  className="size-4"
+                  checked={useShared}
+                  disabled={isEdit && !pendingEditable}
+                  onChange={(event) => {
+                    setValue("use_shared_allocations", event.target.checked);
+                    if (event.target.checked) {
+                      setValue("cost_item_id", "");
+                      if (allocations.length === 0) {
+                        setValue("allocations", [{ cost_item_id: "", allocated_amount: "" }]);
+                      }
+                    } else {
+                      setValue("allocations", []);
+                    }
+                  }}
+                />
+                Split across Cost Items (shared allocations)
+              </label>
+
+              {useShared ? (
+                <AllocationEditor
+                  control={control}
+                  register={register}
+                  errors={errors}
+                  costItems={costItems}
+                  amount={amount}
+                  allocations={allocations}
+                  disabled={isEdit && !pendingEditable}
+                />
+              ) : (
+                <Field label="Cost Item" required error={errors.cost_item_id?.message}>
+                  <Controller
+                    name="cost_item_id"
+                    control={control}
+                    render={({ field }) => (
+                      <Select
+                        value={field.value || undefined}
+                        onValueChange={(value) => {
+                          field.onChange(value);
+                          setValue("work_order_id", "");
+                        }}
+                        disabled={isEdit && !pendingEditable}
+                      >
+                        <SelectTrigger>
+                          <SelectValue placeholder="Select cost item" />
+                        </SelectTrigger>
+                        <SelectContent>
+                          {costItems.map((item) => (
+                            <SelectItem key={item.id} value={item.id}>
+                              {item.title}
+                            </SelectItem>
+                          ))}
+                        </SelectContent>
+                      </Select>
+                    )}
+                  />
+                </Field>
+              )}
+
+              {txnType === "Vendor Payment" || transaction?.transaction_type === "Vendor Payment" ? (
+                <Field label="Work Order" required error={errors.work_order_id?.message}>
+                  <Controller
+                    name="work_order_id"
+                    control={control}
+                    render={({ field }) => (
+                      <Select
+                        value={field.value || undefined}
+                        onValueChange={field.onChange}
+                        disabled={isEdit && !pendingEditable}
+                      >
+                        <SelectTrigger>
+                          <SelectValue placeholder="Select work order" />
+                        </SelectTrigger>
+                        <SelectContent>
+                          {filteredWorkOrders.map((wo) => (
+                            <SelectItem key={wo.id} value={wo.id}>
+                              {wo.work_order_number}
+                            </SelectItem>
+                          ))}
+                        </SelectContent>
+                      </Select>
+                    )}
+                  />
+                </Field>
+              ) : null}
+            </>
+          )}
 
           <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
             <Field label="Amount" required error={errors.amount?.message}>

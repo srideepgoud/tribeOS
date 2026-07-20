@@ -29,18 +29,12 @@ def create_app() -> FastAPI:
 
     app = FastAPI(title="TribeOS API", version="0.0.0")
 
-    # Local Next.js dev origin. Tighten for production when auth/deploy land.
-    if settings.app_env == "development":
+    # CORS must be registered for browser clients on a different origin/port.
+    # Origins come from ``CORS_ORIGINS`` (comma-separated) or local Next.js defaults.
+    if settings.cors_origins:
         app.add_middleware(
             CORSMiddleware,
-            allow_origins=[
-                "http://localhost:3000",
-                "http://127.0.0.1:3000",
-                "http://localhost:3001",
-                "http://127.0.0.1:3001",
-                "http://localhost:3002",
-                "http://127.0.0.1:3002",
-            ],
+            allow_origins=settings.cors_origins,
             allow_credentials=True,
             allow_methods=["*"],
             allow_headers=["*"],

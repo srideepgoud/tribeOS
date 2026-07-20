@@ -49,3 +49,5 @@ warn_redundant_casts = true
 asyncio_mode = "auto"
 testpaths = ["tests"]
 pythonpath = ["."]
+# Same-named modules under tests/domains/*/ (e.g. test_repository.py) need unique import paths.
+addopts = "--import-mode=importlib"

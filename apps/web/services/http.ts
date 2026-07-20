@@ -80,6 +80,8 @@ export const http = {
   get: <T>(path: string) => request<T>(path),
   post: <T>(path: string, payload: unknown) =>
     request<T>(path, { method: "POST", body: JSON.stringify(payload) }),
+  put: <T>(path: string, payload: unknown) =>
+    request<T>(path, { method: "PUT", body: JSON.stringify(payload) }),
   patch: <T>(path: string, payload: unknown) =>
     request<T>(path, { method: "PATCH", body: JSON.stringify(payload) }),
   delete: (path: string) => request<void>(path, { method: "DELETE" }),

@@ -67,3 +67,17 @@ async def test_create_complete_no_delete(api_client: AsyncClient, db_session: As
 
     deleted = await api_client.delete(f"/api/v1/transactions/{txn_id}")
     assert deleted.status_code == 405
+
+    allocations = await api_client.get(f"/api/v1/transactions/{txn_id}/allocations")
+    assert allocations.status_code == 200
+    assert len(allocations.json()["data"]) == 1
+    assert allocations.json()["data"][0]["allocated_amount"] == "250.00"
+
+    summary = await api_client.get(f"/api/v1/events/{event_id}/financial-summary")
+    assert summary.status_code == 200
+    assert summary.json()["data"]["cash_spent"] == "250.00"
+    assert summary.json()["data"]["attributed_cost"] == "250.00"
+    assert summary.json()["data"]["unattributed_spend"] == "0.00"
+    assert summary.json()["data"]["billed_revenue"] == "0.00"
+    assert summary.json()["data"]["cash_received"] == "0.00"
+    assert summary.json()["data"]["outstanding"] == "0.00"

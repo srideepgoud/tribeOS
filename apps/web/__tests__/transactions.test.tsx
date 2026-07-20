@@ -55,9 +55,10 @@ describe("transactions feature", () => {
     expect(screen.getByText("Completed")).toBeInTheDocument();
   });
 
-  it("shows validation when required fields are missing", async () => {
+  it("shows shared allocation toggle on create form", async () => {
     renderWithClient(<TransactionFormDialog open onOpenChange={() => {}} />);
-    fireEvent.click(screen.getByRole("button", { name: /create transaction/i }));
-    expect(await screen.findByText("Select an Event")).toBeInTheDocument();
+    expect(screen.getByText(/Split across Cost Items/i)).toBeInTheDocument();
+    fireEvent.click(screen.getByRole("checkbox"));
+    expect(await screen.findByText("Cost Allocations")).toBeInTheDocument();
   });
 });

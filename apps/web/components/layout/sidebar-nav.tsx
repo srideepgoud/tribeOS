@@ -2,16 +2,28 @@
 
 import Link from "next/link";
 import { usePathname } from "next/navigation";
-import { Banknote, CalendarDays, ClipboardList, FolderTree, ListTree, Store, Users } from "lucide-react";
+import {
+  Banknote,
+  CalendarDays,
+  ClipboardList,
+  FileText,
+  FolderTree,
+  LayoutDashboard,
+  ListTree,
+  Store,
+  Users,
+} from "lucide-react";
 import { cn } from "@tribeos/ui";
 
 const NAV_ITEMS = [
+  { href: "/dashboard", label: "Operations", icon: LayoutDashboard },
   { href: "/clients", label: "Clients", icon: Users },
   { href: "/events", label: "Events", icon: CalendarDays },
   { href: "/cost-categories", label: "Cost Categories", icon: FolderTree },
   { href: "/cost-items", label: "Cost Items", icon: ListTree },
   { href: "/vendors", label: "Vendors", icon: Store },
   { href: "/vendor-work-orders", label: "Work Orders", icon: ClipboardList },
+  { href: "/client-invoices", label: "Client Invoices", icon: FileText },
   { href: "/transactions", label: "Transactions", icon: Banknote },
 ] as const;
 

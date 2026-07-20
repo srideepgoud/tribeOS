@@ -68,3 +68,19 @@ class EventRead(BaseModel):
         if value is None:
             return None
         return format(value, "f")
+
+
+class FinancialReadinessChecks(BaseModel):
+    """Individual Settlement → Closed gates (informational; EventService enforces)."""
+
+    outstanding: bool
+    unattributed_spend: bool
+    pending_transactions: bool
+
+
+class FinancialReadiness(BaseModel):
+    """Read-only financial close readiness for an Event (Phase 10)."""
+
+    ready: bool
+    checks: FinancialReadinessChecks
+    blocking_reasons: list[str]

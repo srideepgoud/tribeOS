@@ -4,7 +4,6 @@ from __future__ import annotations
 
 import uuid
 from collections.abc import Sequence
-from decimal import Decimal
 from typing import Any
 
 from sqlalchemy import func, or_, select
@@ -48,21 +47,6 @@ class TransactionRepository:
         )
         return int((await self._session.execute(stmt)).scalar_one())
 
-    async def sum_completed_amounts_for_cost_item(self, cost_item_id: uuid.UUID) -> Decimal:
-        """Authoritative spend: sum Completed non-reversal amounts for the Cost Item.
-
-        Reversed originals are excluded by status. Reversal rows are audit entries
-        (linked via reverses_transaction_id) and are excluded by type so impact is
-        not double-counted. Pending and Failed are excluded.
-        """
-        stmt = select(func.coalesce(func.sum(Transaction.amount), 0)).where(
-            Transaction.cost_item_id == cost_item_id,
-            Transaction.status == TransactionStatus.COMPLETED,
-            Transaction.transaction_type != TransactionType.REVERSAL,
-        )
-        value = (await self._session.execute(stmt)).scalar_one()
-        return Decimal(str(value))
-
     async def list_paginated(
         self,
         *,
@@ -73,6 +57,7 @@ class TransactionRepository:
         event_id: uuid.UUID | None = None,
         cost_item_id: uuid.UUID | None = None,
         work_order_id: uuid.UUID | None = None,
+        client_invoice_id: uuid.UUID | None = None,
         transaction_type: TransactionType | None = None,
         status: TransactionStatus | None = None,
     ) -> tuple[Sequence[Transaction], int]:
@@ -83,6 +68,8 @@ class TransactionRepository:
             conditions.append(Transaction.cost_item_id == cost_item_id)
         if work_order_id is not None:
             conditions.append(Transaction.work_order_id == work_order_id)
+        if client_invoice_id is not None:
+            conditions.append(Transaction.client_invoice_id == client_invoice_id)
         if transaction_type is not None:
             conditions.append(Transaction.transaction_type == transaction_type)
         if status is not None:
@@ -108,6 +95,39 @@ class TransactionRepository:
         stmt = stmt.order_by(*order_by).offset(offset).limit(limit)
         rows = (await self._session.execute(stmt)).scalars().all()
         return rows, total
+
+    async def count_pending_financial_by_type(
+        self, event_id: uuid.UUID
+    ) -> dict[TransactionType, int]:
+        """Pending Vendor Payment / Internal Expense / Client Receipt counts for close."""
+        by_event = await self.count_pending_financial_by_event([event_id])
+        return by_event.get(event_id, {})
+
+    async def count_pending_financial_by_event(
+        self, event_ids: Sequence[uuid.UUID]
+    ) -> dict[uuid.UUID, dict[TransactionType, int]]:
+        """Pending financial Transaction counts keyed by Event (Financial Close types)."""
+        if not event_ids:
+            return {}
+        financial_types = (
+            TransactionType.VENDOR_PAYMENT,
+            TransactionType.INTERNAL_EXPENSE,
+            TransactionType.CLIENT_RECEIPT,
+        )
+        stmt = (
+            select(Transaction.event_id, Transaction.transaction_type, func.count())
+            .where(
+                Transaction.event_id.in_(event_ids),
+                Transaction.status == TransactionStatus.PENDING,
+                Transaction.transaction_type.in_(financial_types),
+            )
+            .group_by(Transaction.event_id, Transaction.transaction_type)
+        )
+        rows = (await self._session.execute(stmt)).all()
+        result: dict[uuid.UUID, dict[TransactionType, int]] = {}
+        for event_id, txn_type, count in rows:
+            result.setdefault(event_id, {})[txn_type] = int(count)
+        return result
 
     async def add(self, transaction: Transaction) -> None:
         self._session.add(transaction)

@@ -37,7 +37,9 @@ from sqlalchemy.pool import StaticPool
 
 from app.db.base import Base
 from app.db.session import get_session
+from app.domains.client_invoices import models as _client_invoices_models  # noqa: F401
 from app.domains.clients import models as _clients_models  # noqa: F401  (register table)
+from app.domains.cost_allocations import models as _cost_allocations_models  # noqa: F401
 from app.domains.cost_categories import models as _cost_categories_models  # noqa: F401
 from app.domains.cost_items import models as _cost_items_models  # noqa: F401
 from app.domains.events import models as _events_models  # noqa: F401  (register table)

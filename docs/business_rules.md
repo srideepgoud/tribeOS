@@ -59,11 +59,12 @@
 - Every Cost Item belongs to one Event.
 - Every Cost Item belongs to one Cost Category.
 - Budget Amount must be greater than or equal to zero.
-- Actual Cost is calculated from Transactions unless manually adjusted with approval.
+- Actual Cost (`actual_amount`) is **Attributed Cost** — calculated from Cost Allocations on Completed (non-reversed) Transactions unless manually adjusted with approval (ADR 0012).
+- Actual Cost is not Cash Spent. Cash Spent is calculated from Completed Transactions independently of attribution.
 - Vendor Required determines whether a Vendor Work Order may be created.
 - Internal expenses never require a Vendor Work Order.
 - Shared expenses use Cost Allocations.
-- Cost Items with Transactions cannot be deleted.
+- Cost Items with attributed financial activity cannot be deleted.
 - Budget changes create a Cost Item Version.
 - Commercial value changes always create an Audit Log.
 
@@ -102,24 +103,61 @@
 
 ## Client Invoice Rules
 
-- Invoice numbers are unique.
+- Invoice numbers are system-generated, globally unique, and immutable after create (ADR 0013).
 - Invoice totals cannot be negative.
+- Each invoice belongs to exactly one Event and one Client (`client_id` must match `Event.client_id`).
+- Multiple Client Invoices per Event are allowed. An invoice does not span multiple Events (v1).
+- Never hard-deleted; never archived. Use **Cancelled** where allowed.
 - Cancelled invoices cannot receive payments.
-- One invoice may receive multiple client receipts.
-- Invoice status updates automatically based on payments received.
+- One invoice may receive multiple Client Receipts (partial payments). For v1, one receipt belongs to exactly one invoice.
+- Overpayment is forbidden: Completing a Client Receipt that would make Outstanding &lt; 0 is rejected (`ConflictError`).
+- After **Issued**, commercial fields are locked (`amount`, `gst_amount`, `total_amount`, `client_id`, `event_id`, `invoice_number`, invoice/due dates). `notes` may remain editable until **Paid** or **Cancelled**.
+- **Paid** invoices cannot be modified.
+- **Cancel** is allowed from Draft, or from Issued only when Outstanding equals the invoice total (no Completed non-reversed receipts). Cancel from Partially Paid or Paid is forbidden.
+- **Partially Paid** and **Paid** are system-derived from Outstanding after Client Receipts Complete or Reverse — never user-driven transitions (ADR 0013).
+- Client Receipt cash corrections use Transaction Reversal only; never edit completed receipt amounts in place.
+
+### Outstanding (invoice)
+
+Calculated only.
+
+```text
+Outstanding = Invoice.total_amount − Σ(Completed, non-reversed Client Receipts for that invoice)
+```
+
+### Derived payment status (Issued+)
+
+| Outstanding | Derived status |
+|-------------|----------------|
+| Equals `total_amount` (no completed receipts) | Issued |
+| `0 < Outstanding < total_amount` | Partially Paid |
+| `Outstanding = 0` | Paid |
+
+Recalculate after every Client Receipt Completes or is Reversed. Draft and Cancelled never auto-transition from receipts.
+
+### Outstanding (Event)
+
+```text
+Event Outstanding = Σ Outstanding over non-Cancelled invoices on the Event
+```
 
 ---
 
 ## Transaction Rules
 
-- Transactions are immutable after completion.
+- Cash fields are immutable after completion.
 - Editing completed amounts is prohibited.
 - Corrections require a Reversal transaction.
 - Negative amounts are not allowed except for system-generated reversals.
 - Vendor Payments require a Vendor Work Order.
-- Client Receipts require a Client Invoice.
-- Internal Expenses may reference a Cost Item directly.
-- Every completed transaction updates financial summaries automatically.
+- Client Receipts require a Client Invoice; `event_id` must equal the invoice’s `event_id` (ADR 0013).
+- Client Receipts do **not** use Cost Allocations or require `cost_item_id` (revenue cash — ADR 0013).
+- A Completed Transaction may exist without Cost Item attribution (expense types).
+- Header `cost_item_id` is transitional only; Cost Allocations are the sole attribution source of truth (ADR 0012).
+- When a Transaction is Completed with a single `cost_item_id` and no allocation payload, the service SHALL create exactly one Cost Allocation for the full amount (expense Completions only — not Client Receipts).
+- Every completed expense transaction updates Cash Spent automatically.
+- Every completed Client Receipt updates Cash Received and invoice Outstanding / derived status automatically (ADR 0013).
+- Attribution changes update Attributed Cost (`actual_amount`) automatically.
 - Every transaction creates an Audit Log.
 
 ---
@@ -127,9 +165,91 @@
 ## Cost Allocation Rules
 
 - Allocations must belong to one Transaction.
-- Total allocated amount must equal the Transaction amount.
-- Allocations cannot exceed Transaction amount.
+- Cost Allocations are the sole canonical source of Cost Item attribution.
+- Allocations cannot exceed Transaction amount (`Σ allocated_amount ≤ Transaction.amount`).
+- Attribution lifecycle (derived):
+  - **Unattributed** — no allocation rows (`Σ = 0`)
+  - **Partially Attributed** — `0 < Σ < Transaction.amount`
+  - **Fully Attributed** — `Σ = Transaction.amount`
+- When Fully Attributed, total allocated amount must equal the Transaction amount.
+- Fully Attributed does not imply immutable; Finance may adjust allocations until Financial Close.
 - Allocations cannot reference archived Cost Items.
+- Allocations are created and updated only via the Transaction aggregate (no bypassing `TransactionService`).
+- Allocations become immutable when the Event reaches **Closed** (Financial Close).
+- Client Receipt Transactions never carry Cost Allocations (ADR 0013).
+
+---
+
+## Cash Spent, Attributed Cost, and Unattributed Spend
+
+These are different expense-side metrics (ADR 0012):
+
+```text
+Cash Spent (Event)
+  = SUM of Completed Vendor Payment and Internal Expense amounts
+    (net of completed Reversals)
+  — Client Receipts are not Cash Spent; they are Cash Received (ADR 0013)
+
+Attributed Cost (Cost Item)
+  = SUM of Cost Allocation amounts on Completed non-reversed Transactions
+  = cost_items.actual_amount
+
+Unattributed Spend (Event)
+  = Cash Spent − Attributed Cost (Event rollup)
+```
+
+- Budget vs Actual uses **Attributed Cost**.
+- Cash-flow expense reporting uses **Cash Spent**.
+- Unattributed Spend is excluded from Cost Item actuals but **must remain visible** in Event-level financial reports as Unattributed Spend.
+- Dashboards must not imply ₹0 spent when Cash Spent &gt; 0 merely because attribution is pending.
+
+---
+
+## Billed Revenue, Cash Received, and Outstanding
+
+These are different revenue-side metrics (ADR 0013). Do **not** use ambiguous “Client Revenue.”
+
+```text
+Billed Revenue (Event)
+  = SUM(total_amount) for invoices in Issued | Partially Paid | Paid
+    (exclude Draft and Cancelled)
+
+Cash Received (Event)
+  = SUM of Completed Client Receipt amounts
+    (net of completed Reversals)
+
+Outstanding (invoice)
+  = Invoice.total_amount − Σ(Completed, non-reversed Client Receipts)
+
+Outstanding (Event)
+  = Σ Outstanding over non-Cancelled invoices on the Event
+```
+
+- Event P&L / profitability uses **Billed Revenue**.
+- Cash-flow reporting uses **Cash Received**.
+- Cash never appears in profitability.
+
+---
+
+## Financial Close Rules (Settlement → Closed)
+
+Financial Close maps to Event **Closed** after **Settlement** (ADR 0012, ADR 0013).
+
+Before Settlement → Closed:
+
+**Expense (ADR 0012)** — for Vendor Payment and Internal Expense (and net effect of their Reversals):
+
+1. Blocking Pending Transactions must be resolved (exact Pending policy owned by Financial Close phase).
+2. Every non-reversed Completed Transaction that requires Cost Item attribution must be **Fully Attributed**.
+3. Entering Closed locks Cost Allocations for the Event (immutable).
+
+**Revenue (ADR 0013):**
+
+4. Event Outstanding must be **0** (every non-Cancelled Client Invoice has Outstanding = 0). Gate on the **computed Outstanding** fact, not on stored invoice status (`status != Paid` is insufficient).
+
+5. Event profitability is then deterministic: **Event Profit = Billed Revenue − Total Attributed Cost**.
+
+During Settlement, allocations remain editable. Reaching Fully Attributed alone does not lock allocations.
 
 ---
 
@@ -174,27 +294,29 @@
 
 ## Financial Rules
 
-### Profit
+### Event Profit
 
 Profit is never stored.
 
+```text
+Event Profit = Billed Revenue − Total Attributed Cost
 ```
-Profit = Client Revenue − Total Actual Cost
-```
+
+Cash Spent, Unattributed Spend, and Cash Received are reported separately and must not be silently omitted (ADR 0012, ADR 0013). Cash never enters the profit formula.
 
 ### Outstanding Client Balance
 
-Calculated only.
+Calculated only (same as invoice / Event Outstanding above).
 
-```
-Outstanding = Invoice Total − Client Receipts
+```text
+Outstanding = Invoice Total − Completed non-reversed Client Receipts
 ```
 
 ### Outstanding Vendor Liability
 
 Calculated only.
 
-```
+```text
 Outstanding = Work Order Amount − Vendor Payments
 ```
 
@@ -202,16 +324,18 @@ Outstanding = Work Order Amount − Vendor Payments
 
 Calculated only.
 
-```
+```text
 Variance = Budget Amount − Actual Cost
 ```
+
+Actual Cost here is Attributed Cost (`actual_amount`), not Cash Spent.
 
 ### Margin
 
 Calculated only.
 
-```
-Margin = Profit ÷ Revenue
+```text
+Margin = Event Profit ÷ Billed Revenue
 ```
 
 ---
@@ -229,8 +353,10 @@ Margin = Profit ÷ Revenue
 **Never archive:**
 
 - Transactions
+- Cost Allocations
 - Audit Logs
 - Cost Item Versions
+- Client Invoices (Cancel only — ADR 0013)
 
 ---
 
@@ -250,12 +376,15 @@ Approval is required when:
 
 The system automatically:
 
-- Updates Event profitability after every Transaction.
-- Updates invoice balances after every Client Receipt.
+- Updates Event Cash Spent after every Completed / Reversed expense Transaction (Vendor Payment, Internal Expense).
+- Updates Event Cash Received after every Completed / Reversed Client Receipt.
+- Updates Cost Item Attributed Cost (`actual_amount`) when Cost Allocations change or when linked Transactions Complete / Reverse.
+- Recalculates invoice Outstanding and derived Issued / Partially Paid / Paid status after every Client Receipt Completes or is Reversed.
 - Updates Work Order balances after Vendor Payments.
 - Creates Cost Item Versions on commercial changes.
 - Creates Audit Logs on critical actions.
-- Recalculates dashboards in real time.
+- On Event Closed: locks Cost Allocations for the Event; freezes Event P&L inputs (Billed Revenue and Attributed Cost).
+- Recalculates dashboards in real time (Cash Spent, Attributed Cost, Unattributed Spend, Billed Revenue, Cash Received, Outstanding).
 
 ---
 

@@ -96,7 +96,9 @@ class Transaction(UUIDPrimaryKeyMixin, TimestampMixin, AuditUserMixin, Base):
         index=True,
     )
     client_invoice_id: Mapped[uuid.UUID | None] = mapped_column(
-        # Client Invoices not implemented yet — column reserved, no FK constraint.
+        ForeignKey(
+            "client_invoices.id", name="fk_transactions_client_invoice_id_client_invoices"
+        ),
         nullable=True,
         index=True,
     )

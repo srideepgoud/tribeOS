@@ -9,11 +9,13 @@ from __future__ import annotations
 
 import uuid
 from collections.abc import Sequence
+from dataclasses import dataclass
 from typing import Any
 
 from sqlalchemy import func, or_, select
 from sqlalchemy.ext.asyncio import AsyncSession
 
+from app.domains.clients.models import Client
 from app.domains.events.models import Event, EventStatus
 from app.shared.sorting import build_order_by
 
@@ -24,6 +26,12 @@ _SORTABLE = {
     "start_datetime": Event.start_datetime,
     "status": Event.status,
 }
+
+
+@dataclass(frozen=True, slots=True)
+class EventWithClientName:
+    event: Event
+    client_name: str
 
 
 class EventRepository:
@@ -59,6 +67,31 @@ class EventRepository:
             .where(Event.client_id == client_id, Event.archived_at.is_(None))
         )
         return int((await self._session.execute(stmt)).scalar_one())
+
+    async def count_non_archived_by_status(self) -> dict[EventStatus, int]:
+        """Non-archived Event counts keyed by status (dashboard overview)."""
+        stmt = (
+            select(Event.status, func.count())
+            .where(Event.archived_at.is_(None))
+            .group_by(Event.status)
+        )
+        rows = (await self._session.execute(stmt)).all()
+        return {status: int(count) for status, count in rows}
+
+    async def list_non_archived_by_statuses(
+        self, statuses: Sequence[EventStatus]
+    ) -> Sequence[EventWithClientName]:
+        """Non-archived Events in the given statuses, with Client company name."""
+        if not statuses:
+            return []
+        stmt = (
+            select(Event, Client.company_name)
+            .join(Client, Client.id == Event.client_id)
+            .where(Event.archived_at.is_(None), Event.status.in_(statuses))
+            .order_by(Event.updated_at.desc())
+        )
+        rows = (await self._session.execute(stmt)).all()
+        return [EventWithClientName(event=event, client_name=name) for event, name in rows]
 
     async def list_paginated(
         self,
