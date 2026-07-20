@@ -26,6 +26,8 @@ Read these before contributing (they are authoritative — code must never contr
 
 Execution plans (not frozen specs): [`docs/milestone_0_plan.md`](./docs/milestone_0_plan.md).
 
+Deployment runbook: [`docs/deployment.md`](./docs/deployment.md).
+
 > These documents are **frozen** as of v1.0 (see `docs/document_hierarchy.md`). Implementation conforms to them; changing them requires an explicit instruction (and an ADR for architectural changes).
 
 AI assistant guidance lives in [`.cursor/rules/`](./.cursor/rules/).

@@ -102,7 +102,7 @@ export function ClientInvoiceFormDialog({
           id: invoice.id,
           input: draftOnly
             ? toClientInvoicePayload(values)
-            : { notes: values.notes.trim() || null },
+            : { notes: values.notes?.trim() || null },
         });
       } else {
         await createMutation.mutateAsync(toClientInvoicePayload(values));
