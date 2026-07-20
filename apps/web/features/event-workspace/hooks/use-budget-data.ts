@@ -24,11 +24,11 @@ export function useBudgetData(eventId: string) {
   });
   const itemsQuery = useCostItems({
     page: 1,
-    page_size: 200,
+    page_size: 100,
     event_id: eventId,
     sort: "title",
   });
-  const workOrdersQuery = useVendorWorkOrders({ page: 1, page_size: 200 });
+  const workOrdersQuery = useVendorWorkOrders({ page: 1, page_size: 100 });
 
   const categories = categoriesQuery.data?.data ?? [];
   const items = itemsQuery.data?.data ?? [];

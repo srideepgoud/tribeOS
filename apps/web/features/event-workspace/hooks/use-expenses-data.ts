@@ -12,14 +12,14 @@ export function useExpensesData(eventId: string) {
   const eventQuery = useEvent(eventId);
   const txnsQuery = useTransactions({
     page: 1,
-    page_size: 200,
+    page_size: 100,
     event_id: eventId,
     sort: "-transaction_date",
   });
   const summaryQuery = useEventFinancialSummary(eventId);
   const itemsQuery = useCostItems({
     page: 1,
-    page_size: 200,
+    page_size: 100,
     event_id: eventId,
     sort: "title",
   });

@@ -9,7 +9,7 @@ export function useInvoicesData(eventId: string) {
   const eventQuery = useEvent(eventId);
   const invoicesQuery = useClientInvoices({
     page: 1,
-    page_size: 200,
+    page_size: 100,
     event_id: eventId,
     sort: "-created_at",
   });
