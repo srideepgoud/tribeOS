@@ -6,6 +6,7 @@ import { useClients } from "@/features/clients/hooks";
 import { useCostItems } from "@/features/cost-items/hooks";
 import { useEvent } from "@/features/events/hooks";
 import { useEventFinancialSummary } from "@/features/transactions/hooks";
+import { API_MAX_PAGE_SIZE } from "@/lib/api-pagination";
 import { apiErrorMessage } from "@/services/http";
 
 import { tabFromSegment, type WorkspaceTab } from "../constants";
@@ -24,8 +25,16 @@ interface EventWorkspaceShellProps {
 export function EventWorkspaceShell({ eventId, activeTab, children }: EventWorkspaceShellProps) {
   const eventQuery = useEvent(eventId);
   const summaryQuery = useEventFinancialSummary(eventId);
-  const costItemsQuery = useCostItems({ page: 1, page_size: 100, event_id: eventId });
-  const clientsQuery = useClients({ page: 1, page_size: 100, sort: "company_name" });
+  const costItemsQuery = useCostItems({
+    page: 1,
+    page_size: API_MAX_PAGE_SIZE,
+    event_id: eventId,
+  });
+  const clientsQuery = useClients({
+    page: 1,
+    page_size: API_MAX_PAGE_SIZE,
+    sort: "company_name",
+  });
 
   const clientName =
     clientsQuery.data?.data.find((client) => client.id === eventQuery.data?.client_id)

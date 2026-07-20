@@ -5,6 +5,7 @@ import { useMemo } from "react";
 import { useCostItems } from "@/features/cost-items/hooks";
 import { useEvent } from "@/features/events/hooks";
 import { useEventFinancialSummary, useTransactions } from "@/features/transactions/hooks";
+import { API_MAX_PAGE_SIZE } from "@/lib/api-pagination";
 
 import { isExpenseTransaction } from "../lib/expenses-utils";
 
@@ -12,14 +13,14 @@ export function useExpensesData(eventId: string) {
   const eventQuery = useEvent(eventId);
   const txnsQuery = useTransactions({
     page: 1,
-    page_size: 100,
+    page_size: API_MAX_PAGE_SIZE,
     event_id: eventId,
     sort: "-transaction_date",
   });
   const summaryQuery = useEventFinancialSummary(eventId);
   const itemsQuery = useCostItems({
     page: 1,
-    page_size: 100,
+    page_size: API_MAX_PAGE_SIZE,
     event_id: eventId,
     sort: "title",
   });

@@ -9,6 +9,7 @@ import { useEvent, useEventFinancialReadiness } from "@/features/events/hooks";
 import { useTransactions, useEventFinancialSummary } from "@/features/transactions/hooks";
 import { useVendorWorkOrders } from "@/features/vendor-work-orders/hooks";
 import { statusRank } from "@/features/event-workspace/constants";
+import { API_MAX_PAGE_SIZE } from "@/lib/api-pagination";
 import type { EventStatus } from "@/types/event";
 
 export type ReadinessStatus = "done" | "attention" | "blocked" | "not_started";
@@ -44,16 +45,24 @@ export function useEventOverview(eventId: string) {
     eventId,
     eventQuery.data?.status === "Settlement" || eventQuery.data?.status === "Closed",
   );
-  const categoriesQuery = useCostCategories({ page: 1, page_size: 100, event_id: eventId });
-  const costItemsQuery = useCostItems({ page: 1, page_size: 100, event_id: eventId });
-  const workOrdersQuery = useVendorWorkOrders({ page: 1, page_size: 100 });
+  const categoriesQuery = useCostCategories({
+    page: 1,
+    page_size: API_MAX_PAGE_SIZE,
+    event_id: eventId,
+  });
+  const costItemsQuery = useCostItems({ page: 1, page_size: API_MAX_PAGE_SIZE, event_id: eventId });
+  const workOrdersQuery = useVendorWorkOrders({ page: 1, page_size: API_MAX_PAGE_SIZE });
   const pendingTxnQuery = useTransactions({
     page: 1,
     page_size: 1,
     event_id: eventId,
     status: "Pending",
   });
-  const clientsQuery = useClients({ page: 1, page_size: 100, sort: "company_name" });
+  const clientsQuery = useClients({
+    page: 1,
+    page_size: API_MAX_PAGE_SIZE,
+    sort: "company_name",
+  });
 
   const clientName = useMemo(() => {
     const clientId = eventQuery.data?.client_id;

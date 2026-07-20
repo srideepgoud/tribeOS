@@ -7,6 +7,7 @@ import { useCostItems } from "@/features/cost-items/hooks";
 import { useEvent } from "@/features/events/hooks";
 import { useVendorWorkOrders } from "@/features/vendor-work-orders/hooks";
 import { useVendors } from "@/features/vendors/hooks";
+import { API_MAX_PAGE_SIZE } from "@/lib/api-pagination";
 
 import { groupExecutionBySection } from "../lib/execution-utils";
 
@@ -14,18 +15,18 @@ export function useExecutionData(eventId: string) {
   const eventQuery = useEvent(eventId);
   const categoriesQuery = useCostCategories({
     page: 1,
-    page_size: 100,
+    page_size: API_MAX_PAGE_SIZE,
     event_id: eventId,
     sort: "display_order",
   });
   const itemsQuery = useCostItems({
     page: 1,
-    page_size: 100,
+    page_size: API_MAX_PAGE_SIZE,
     event_id: eventId,
     sort: "title",
   });
-  const workOrdersQuery = useVendorWorkOrders({ page: 1, page_size: 100 });
-  const vendorsQuery = useVendors({ page: 1, page_size: 100, sort: "company_name" });
+  const workOrdersQuery = useVendorWorkOrders({ page: 1, page_size: API_MAX_PAGE_SIZE });
+  const vendorsQuery = useVendors({ page: 1, page_size: API_MAX_PAGE_SIZE, sort: "company_name" });
 
   const categories = categoriesQuery.data?.data ?? [];
   const items = itemsQuery.data?.data ?? [];

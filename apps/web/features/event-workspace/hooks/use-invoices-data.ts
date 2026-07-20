@@ -4,12 +4,13 @@ import { useMemo } from "react";
 
 import { useClientInvoices } from "@/features/client-invoices/hooks";
 import { useEvent } from "@/features/events/hooks";
+import { API_MAX_PAGE_SIZE } from "@/lib/api-pagination";
 
 export function useInvoicesData(eventId: string) {
   const eventQuery = useEvent(eventId);
   const invoicesQuery = useClientInvoices({
     page: 1,
-    page_size: 100,
+    page_size: API_MAX_PAGE_SIZE,
     event_id: eventId,
     sort: "-created_at",
   });

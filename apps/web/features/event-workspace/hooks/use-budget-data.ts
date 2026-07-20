@@ -6,6 +6,7 @@ import { useCostCategories } from "@/features/cost-categories/hooks";
 import { useCostItems } from "@/features/cost-items/hooks";
 import { useEvent } from "@/features/events/hooks";
 import { useVendorWorkOrders } from "@/features/vendor-work-orders/hooks";
+import { API_MAX_PAGE_SIZE } from "@/lib/api-pagination";
 
 import {
   buildCommittedByLineId,
@@ -18,17 +19,17 @@ export function useBudgetData(eventId: string) {
   const eventQuery = useEvent(eventId);
   const categoriesQuery = useCostCategories({
     page: 1,
-    page_size: 100,
+    page_size: API_MAX_PAGE_SIZE,
     event_id: eventId,
     sort: "display_order",
   });
   const itemsQuery = useCostItems({
     page: 1,
-    page_size: 100,
+    page_size: API_MAX_PAGE_SIZE,
     event_id: eventId,
     sort: "title",
   });
-  const workOrdersQuery = useVendorWorkOrders({ page: 1, page_size: 100 });
+  const workOrdersQuery = useVendorWorkOrders({ page: 1, page_size: API_MAX_PAGE_SIZE });
 
   const categories = categoriesQuery.data?.data ?? [];
   const items = itemsQuery.data?.data ?? [];
