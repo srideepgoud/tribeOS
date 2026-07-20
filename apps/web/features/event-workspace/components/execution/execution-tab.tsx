@@ -1,6 +1,7 @@
 "use client";
 
 import { useMemo, useState } from "react";
+import Link from "next/link";
 import { Search } from "lucide-react";
 import {
   Input,
@@ -19,8 +20,10 @@ import { isEventReadOnly } from "@/types/event";
 import type { VendorWorkOrder, VendorWorkOrderStatus } from "@/types/vendor-work-order";
 import { VENDOR_WORK_ORDER_STATUSES } from "@/types/vendor-work-order";
 
+import { WORKSPACE_TABS, isTabAvailable } from "../../constants";
 import { useExecutionData } from "../../hooks/use-execution-data";
 import { executionCoverage, filterExecutionGroups } from "../../lib/execution-utils";
+import { TabGatePanel } from "../tab-gate-panel";
 import { WorkspaceErrorState } from "../workspace-error-state";
 import { ExecutionSectionGroupBlock } from "./execution-section-group";
 
@@ -68,6 +71,11 @@ export function ExecutionTab({ eventId }: ExecutionTabProps) {
         onRetry={refetch}
       />
     );
+  }
+
+  const executionTab = WORKSPACE_TABS.find((tab) => tab.id === "execution")!;
+  if (!isTabAvailable(event.status, executionTab)) {
+    return <TabGatePanel event={event} tab={executionTab} />;
   }
 
   return (
@@ -131,10 +139,16 @@ export function ExecutionTab({ eventId }: ExecutionTabProps) {
 
       {groups.length === 0 ? (
         <div className="rounded-lg border border-dashed border-border bg-surface px-6 py-12 text-center">
-          <p className="text-sm font-medium text-foreground">No vendor budget lines yet</p>
+          <p className="text-sm font-medium text-foreground">No Vendor Work Orders yet</p>
           <p className="mt-1 text-sm text-muted">
-            Add Vendor-type budget lines in the Budget tab before assigning work orders.
+            They appear once you assign a vendor from a Budget Line.
           </p>
+          <Link
+            href={`/events/${eventId}/budget`}
+            className="mt-4 inline-flex text-sm font-medium text-primary hover:underline"
+          >
+            Go to Budget
+          </Link>
         </div>
       ) : filteredGroups.length === 0 ? (
         <div className="rounded-lg border border-dashed border-border bg-surface px-6 py-12 text-center text-sm text-muted">

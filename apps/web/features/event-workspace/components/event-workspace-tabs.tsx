@@ -22,34 +22,29 @@ export function EventWorkspaceTabs({ eventId, eventStatus }: EventWorkspaceTabsP
         {WORKSPACE_TABS.map((tab) => {
           const href = workspaceTabHref(eventId, tab);
           const isActive = pathname === href || pathname.startsWith(`${href}/`);
-          const available = isTabAvailable(eventStatus, tab);
-
-          if (!available) {
-            return (
-              <span
-                key={tab.id}
-                title={tab.unavailableHint}
-                className="shrink-0 cursor-not-allowed border-b-2 border-transparent px-3 py-2.5 text-sm font-medium text-disabled"
-                aria-disabled="true"
-              >
-                {tab.label}
-              </span>
-            );
-          }
+          const unlocked = isTabAvailable(eventStatus, tab);
 
           return (
             <Link
               key={tab.id}
               href={href}
+              title={unlocked ? undefined : tab.unavailableHint}
               className={cn(
                 "shrink-0 border-b-2 px-3 py-2.5 text-sm font-medium transition-colors",
                 isActive
                   ? "border-primary text-foreground"
-                  : "border-transparent text-muted hover:border-border hover:text-foreground",
+                  : unlocked
+                    ? "border-transparent text-muted hover:border-border hover:text-foreground"
+                    : "border-transparent text-disabled hover:text-muted",
               )}
               aria-current={isActive ? "page" : undefined}
             >
               {tab.label}
+              {!unlocked ? (
+                <span className="ml-1 text-[10px] font-normal uppercase tracking-wide opacity-70">
+                  locked
+                </span>
+              ) : null}
             </Link>
           );
         })}

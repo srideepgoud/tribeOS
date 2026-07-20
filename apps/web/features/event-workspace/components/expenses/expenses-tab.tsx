@@ -1,6 +1,7 @@
 "use client";
 
 import { useMemo, useState } from "react";
+import Link from "next/link";
 import { Plus, Search } from "lucide-react";
 import {
   Button,
@@ -19,6 +20,7 @@ import { apiErrorMessage } from "@/services/http";
 import { isEventReadOnly } from "@/types/event";
 import { PAYMENT_METHODS, TRANSACTION_STATUSES, type Transaction, type TransactionStatus } from "@/types/transaction";
 
+import { WORKSPACE_TABS, isTabAvailable } from "../../constants";
 import { useExpensesData } from "../../hooks/use-expenses-data";
 import {
   EXPENSE_FACETS,
@@ -26,6 +28,7 @@ import {
   filterExpenses,
   type ExpenseFacet,
 } from "../../lib/expenses-utils";
+import { TabGatePanel } from "../tab-gate-panel";
 import { WorkspaceErrorState } from "../workspace-error-state";
 import { ExpensesTable } from "./expenses-table";
 
@@ -75,6 +78,11 @@ export function ExpensesTab({ eventId }: ExpensesTabProps) {
         onRetry={refetch}
       />
     );
+  }
+
+  const expensesTab = WORKSPACE_TABS.find((tab) => tab.id === "expenses")!;
+  if (!isTabAvailable(event.status, expensesTab)) {
+    return <TabGatePanel event={event} tab={expensesTab} />;
   }
 
   return (
@@ -155,10 +163,24 @@ export function ExpensesTab({ eventId }: ExpensesTabProps) {
       </div>
 
       {filtered.length === 0 ? (
-        <div className="rounded-lg border border-dashed border-border bg-surface p-12 text-center text-sm text-muted">
-          {hasFilters
-            ? "No expenses match your filters."
-            : "No expenses recorded yet for this event."}
+        <div className="rounded-lg border border-dashed border-border bg-surface p-12 text-center">
+          {hasFilters ? (
+            <p className="text-sm text-muted">No expenses match your filters.</p>
+          ) : (
+            <>
+              <p className="text-sm font-medium text-foreground">No expenses yet</p>
+              <p className="mt-1 text-sm text-muted">
+                Record your first expense from a Budget Line — Actual is derived from attributed
+                spend, not typed here.
+              </p>
+              <Link
+                href={`/events/${eventId}/budget`}
+                className="mt-4 inline-flex text-sm font-medium text-primary hover:underline"
+              >
+                Go to Budget
+              </Link>
+            </>
+          )}
         </div>
       ) : (
         <ExpensesTable expenses={filtered} costItemTitles={itemTitles} onOpen={setEditing} />

@@ -100,18 +100,53 @@ export function BudgetLineDetailPanel({
                   </div>
                 ) : (
                   <div className="grid grid-cols-2 gap-2">
-                    <SummaryMetric label="Budget" value={formatMoney(totals.planned.toFixed(2))} />
                     <SummaryMetric
-                      label="Committed"
+                      label="Budget (editable in grid)"
+                      value={formatMoney(totals.planned.toFixed(2))}
+                    />
+                    <SummaryMetric
+                      label="Committed (from work orders)"
                       value={formatMoney(totals.committed.toFixed(2))}
                     />
-                    <SummaryMetric label="Spent" value={formatMoney(totals.actual.toFixed(2))} />
                     <SummaryMetric
-                      label="Remaining"
+                      label="Actual (from attributed spend)"
+                      value={formatMoney(totals.actual.toFixed(2))}
+                    />
+                    <SummaryMetric
+                      label="Variance (calculated)"
                       value={formatMoney((totals.planned - totals.actual).toFixed(2))}
                     />
                   </div>
                 )}
+
+                {workOrders.length === 0 && expenses.length === 0 ? (
+                  <section className="rounded-md border border-primary/30 bg-primary/5 p-4">
+                    <h3 className="text-sm font-semibold text-foreground">Next steps</h3>
+                    <ol className="mt-3 list-decimal space-y-2 pl-4 text-sm text-foreground-secondary">
+                      <li>Assign a vendor and create a work order (builds Committed).</li>
+                      <li>Record expenses against this line (builds cash spend).</li>
+                      <li>Allocate transactions so Actual reflects attributed cost.</li>
+                    </ol>
+                    <div className="mt-4 flex flex-wrap gap-2">
+                      {canAssignVendor ? (
+                        <Button size="sm" onClick={() => setAssignVendorOpen(true)}>
+                          <Plus />
+                          1. Assign vendor
+                        </Button>
+                      ) : null}
+                      {canRecordExpense ? (
+                        <Button
+                          size="sm"
+                          variant="secondary"
+                          onClick={() => setRecordExpenseOpen(true)}
+                        >
+                          <Plus />
+                          2. Record expense
+                        </Button>
+                      ) : null}
+                    </div>
+                  </section>
+                ) : null}
 
                 <section className="flex flex-col gap-3">
                   <div className="flex items-center justify-between gap-2">

@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { ArchiveCostCategoryDialog } from "@/features/cost-categories/components/archive-cost-category-dialog";
 import { useUpdateCostCategory } from "@/features/cost-categories/hooks";
 import type { CostCategory } from "@/types/cost-category";
@@ -38,6 +38,16 @@ export function BudgetTree({
 }: BudgetTreeProps) {
   const updateSection = useUpdateCostCategory();
   const [archivingSection, setArchivingSection] = useState<CostCategory | null>(null);
+  const [focusSectionId, setFocusSectionId] = useState<string | null>(null);
+  const [totalsFlash, setTotalsFlash] = useState(0);
+  const previousPlanned = useRef(eventTotals.planned);
+
+  useEffect(() => {
+    if (previousPlanned.current !== eventTotals.planned) {
+      previousPlanned.current = eventTotals.planned;
+      setTotalsFlash((value) => value + 1);
+    }
+  }, [eventTotals.planned]);
 
   const onUpdateSectionName = async (sectionId: string, name: string) => {
     await updateSection.mutateAsync({ id: sectionId, input: { name } });
@@ -55,6 +65,8 @@ export function BudgetTree({
           committedByLineId={committedByLineId}
           editable={editable}
           selectedLineId={selectedLineId}
+          focusAddLine={focusSectionId === group.section.id}
+          onConsumedAddLineFocus={() => setFocusSectionId(null)}
           onOpenLine={onOpenLine}
           onArchiveSection={(sectionId) => {
             const section = categories.find((item) => item.id === sectionId) ?? null;
@@ -71,9 +83,15 @@ export function BudgetTree({
         categories={categories}
         editable={editable}
         emphasized={sections.length === 0}
+        onCreated={(sectionId) => setFocusSectionId(sectionId)}
       />
       {sections.length > 0 ? (
-        <BudgetTotalsRow label="Event total" totals={eventTotals} emphasized />
+        <BudgetTotalsRow
+          label="Event budget total"
+          totals={eventTotals}
+          emphasized
+          flashKey={totalsFlash}
+        />
       ) : null}
 
       <ArchiveCostCategoryDialog

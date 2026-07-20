@@ -18,6 +18,8 @@ interface BudgetSectionBlockProps {
   committedByLineId: Readonly<Record<string, number>>;
   editable: boolean;
   selectedLineId: string | null;
+  focusAddLine: boolean;
+  onConsumedAddLineFocus: () => void;
   onOpenLine: (line: CostItem) => void;
   onArchiveSection: (sectionId: string) => void;
   onUpdateSectionName: (sectionId: string, name: string) => Promise<void>;
@@ -31,6 +33,8 @@ export function BudgetSectionBlock({
   committedByLineId,
   editable,
   selectedLineId,
+  focusAddLine,
+  onConsumedAddLineFocus,
   onOpenLine,
   onArchiveSection,
   onUpdateSectionName,
@@ -109,7 +113,13 @@ export function BudgetSectionBlock({
               onRecordExpense={() => onRecordExpense(line)}
             />
           ))}
-          <AddBudgetLineRow eventId={eventId} categoryId={group.section.id} editable={editable} />
+          <AddBudgetLineRow
+            eventId={eventId}
+            categoryId={group.section.id}
+            editable={editable}
+            autoFocus={focusAddLine}
+            onConsumedAutoFocus={onConsumedAddLineFocus}
+          />
           <BudgetTotalsRow label={`${group.section.name} subtotal`} totals={group.totals} />
         </>
       ) : null}

@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { Plus } from "lucide-react";
 import { Button, Input } from "@tribeos/ui";
 
@@ -13,14 +13,29 @@ interface AddBudgetLineRowProps {
   eventId: string;
   categoryId: string;
   editable: boolean;
+  autoFocus?: boolean;
+  onConsumedAutoFocus?: () => void;
 }
 
-export function AddBudgetLineRow({ eventId, categoryId, editable }: AddBudgetLineRowProps) {
+export function AddBudgetLineRow({
+  eventId,
+  categoryId,
+  editable,
+  autoFocus = false,
+  onConsumedAutoFocus,
+}: AddBudgetLineRowProps) {
   const createItem = useCreateCostItem();
+  const titleRef = useRef<HTMLInputElement>(null);
   const [title, setTitle] = useState("");
   const [amount, setAmount] = useState("");
   const [error, setError] = useState<string | null>(null);
   const [active, setActive] = useState(false);
+
+  useEffect(() => {
+    if (!autoFocus || !editable) return;
+    titleRef.current?.focus();
+    onConsumedAutoFocus?.();
+  }, [autoFocus, editable, onConsumedAutoFocus]);
 
   if (!editable) return null;
 
@@ -49,7 +64,9 @@ export function AddBudgetLineRow({ eventId, categoryId, editable }: AddBudgetLin
       });
       setTitle("");
       setAmount("");
-      setActive(false);
+      setActive(true);
+      // Continuous Excel-like entry: stay on the blank row.
+      requestAnimationFrame(() => titleRef.current?.focus());
     } catch (err) {
       setError(apiErrorMessage(err, "Could not create budget line."));
     }
@@ -61,6 +78,7 @@ export function AddBudgetLineRow({ eventId, categoryId, editable }: AddBudgetLin
         <div className="flex min-w-0 items-center gap-2">
           <Plus className="size-3.5 shrink-0 text-primary" aria-hidden />
           <Input
+            ref={titleRef}
             value={title}
             onChange={(event) => setTitle(event.target.value)}
             onFocus={() => setActive(true)}
@@ -70,6 +88,14 @@ export function AddBudgetLineRow({ eventId, categoryId, editable }: AddBudgetLin
             onKeyDown={(event) => {
               if (event.key === "Enter") {
                 event.preventDefault();
+                // Move to amount if name filled but amount empty.
+                if (title.trim() && !amount.trim()) {
+                  const amountInput = event.currentTarget
+                    .closest("div.grid")
+                    ?.querySelector<HTMLInputElement>("input[inputmode='decimal']");
+                  amountInput?.focus();
+                  return;
+                }
                 void commit();
               }
             }}
@@ -79,7 +105,7 @@ export function AddBudgetLineRow({ eventId, categoryId, editable }: AddBudgetLin
           value={amount}
           onChange={(event) => setAmount(event.target.value)}
           onFocus={() => setActive(true)}
-          placeholder="Planned ₹"
+          placeholder="Budget ₹"
           inputMode="decimal"
           aria-label="New budget line planned amount"
           className="h-9 border-transparent bg-transparent text-right shadow-none hover:border-input focus-visible:border-input"
@@ -89,7 +115,6 @@ export function AddBudgetLineRow({ eventId, categoryId, editable }: AddBudgetLin
               void commit();
             }
           }}
-          onBlur={() => void commit()}
         />
         {active || title.trim() || amount.trim() ? (
           <Button

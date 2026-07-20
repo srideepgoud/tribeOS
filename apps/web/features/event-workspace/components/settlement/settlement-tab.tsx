@@ -5,10 +5,11 @@ import { Button, Skeleton } from "@tribeos/ui";
 
 import { useUpdateEvent } from "@/features/events/hooks";
 import { apiErrorMessage } from "@/services/http";
-import { statusRank } from "@/features/event-workspace/constants";
+import { WORKSPACE_TABS, isTabAvailable } from "@/features/event-workspace/constants";
 
 import { useSettlementData } from "../../hooks/use-settlement-data";
 import { isBudgetFrozen } from "../../lib/settlement-utils";
+import { TabGatePanel } from "../tab-gate-panel";
 import { WorkspaceErrorState } from "../workspace-error-state";
 import { SettlementGates } from "./settlement-gates";
 import { SettlementPnlPanel } from "./settlement-pnl-panel";
@@ -51,9 +52,13 @@ export function SettlementTab({ eventId }: SettlementTabProps) {
     );
   }
 
+  const settlementTab = WORKSPACE_TABS.find((tab) => tab.id === "settlement")!;
+  if (!isTabAvailable(event.status, settlementTab)) {
+    return <TabGatePanel event={event} tab={settlementTab} />;
+  }
+
   const inSettlement = event.status === "Settlement";
   const isClosed = event.status === "Closed";
-  const beforeSettlement = statusRank(event.status) < statusRank("Settlement");
   const canClose = inSettlement && readiness?.ready === true;
   const budgetFrozen = isBudgetFrozen(event.status);
 
@@ -75,13 +80,6 @@ export function SettlementTab({ eventId }: SettlementTabProps) {
         </p>
       </header>
 
-      {beforeSettlement ? (
-        <div className="rounded-lg border border-dashed border-border bg-card px-4 py-6 text-sm text-foreground-secondary">
-          Settlement unlocks after the event advances to the Settlement phase. Complete execution,
-          collections, and expense attribution first.
-        </div>
-      ) : null}
-
       {isClosed ? (
         <div className="rounded-lg border border-success/30 bg-success/5 px-4 py-3 text-sm text-foreground">
           This event is closed. Financial records remain read-only.
@@ -90,25 +88,19 @@ export function SettlementTab({ eventId }: SettlementTabProps) {
 
       {budgetFrozen ? (
         <div className="rounded-lg border border-border bg-muted/20 px-4 py-3 text-sm text-muted">
-          Budget is frozen during Settlement and after Close.
+          Budget is frozen during Settlement and after Close. Committed and Actual stay derived.
         </div>
       ) : null}
 
       <div className="grid gap-4 lg:grid-cols-2">
-        {inSettlement || isClosed ? (
-          <SettlementGates
-            eventId={eventId}
-            readiness={readiness}
-            isLoading={readinessLoading}
-            errorMessage={
-              readinessError ? apiErrorMessage(readinessError, "Could not load readiness.") : null
-            }
-          />
-        ) : (
-          <div className="rounded-lg border border-border bg-card p-4 text-sm text-muted">
-            Close gates become active when the event enters Settlement.
-          </div>
-        )}
+        <SettlementGates
+          eventId={eventId}
+          readiness={readiness}
+          isLoading={readinessLoading}
+          errorMessage={
+            readinessError ? apiErrorMessage(readinessError, "Could not load readiness.") : null
+          }
+        />
 
         {pnl && summary ? <SettlementPnlPanel pnl={pnl} /> : null}
       </div>

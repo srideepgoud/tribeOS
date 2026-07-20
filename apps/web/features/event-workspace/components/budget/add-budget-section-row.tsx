@@ -15,6 +15,7 @@ interface AddBudgetSectionRowProps {
   categories: readonly CostCategory[];
   editable: boolean;
   emphasized?: boolean;
+  onCreated?: (sectionId: string) => void;
 }
 
 export function AddBudgetSectionRow({
@@ -22,6 +23,7 @@ export function AddBudgetSectionRow({
   categories,
   editable,
   emphasized = false,
+  onCreated,
 }: AddBudgetSectionRowProps) {
   const createSection = useCreateCostCategory();
   const [name, setName] = useState("");
@@ -35,12 +37,13 @@ export function AddBudgetSectionRow({
     if (!trimmed) return;
     setError(null);
     try {
-      await createSection.mutateAsync({
+      const created = await createSection.mutateAsync({
         event_id: eventId,
         name: trimmed,
         display_order: nextSectionDisplayOrder(categories),
       });
       setName("");
+      onCreated?.(created.id);
     } catch (err) {
       setError(apiErrorMessage(err, "Could not create budget section."));
     }
@@ -62,7 +65,6 @@ export function AddBudgetSectionRow({
           onFocus={() => setFocused(true)}
           onBlur={() => {
             setFocused(false);
-            void commit();
           }}
           placeholder="+ Add budget section"
           aria-label="New budget section name"
@@ -88,7 +90,7 @@ export function AddBudgetSectionRow({
       </div>
       {emphasized ? (
         <p className="mt-2 text-xs text-muted">
-          Type a section name (e.g. Production, F&amp;B) and press Enter — no dialogs.
+          Type a section name and press Enter — focus moves to Add budget line next.
         </p>
       ) : null}
       {error ? (

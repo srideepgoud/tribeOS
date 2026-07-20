@@ -26,8 +26,10 @@ import { CLIENT_INVOICE_STATUSES } from "@/types/client-invoice";
 import { isEventReadOnly } from "@/types/event";
 import { formatMoney } from "@/lib/money";
 
+import { WORKSPACE_TABS, isTabAvailable } from "../../constants";
 import { useInvoicesData } from "../../hooks/use-invoices-data";
 import { filterInvoices, invoiceCollectionSummary } from "../../lib/invoices-utils";
+import { TabGatePanel } from "../tab-gate-panel";
 
 interface InvoicesTabProps {
   eventId: string;
@@ -64,6 +66,11 @@ export function InvoicesTab({ eventId }: InvoicesTabProps) {
         message={apiErrorMessage(error, "Could not load event invoices.")}
       />
     );
+  }
+
+  const invoicesTab = WORKSPACE_TABS.find((tab) => tab.id === "invoices")!;
+  if (!isTabAvailable(event.status, invoicesTab)) {
+    return <TabGatePanel event={event} tab={invoicesTab} />;
   }
 
   return (

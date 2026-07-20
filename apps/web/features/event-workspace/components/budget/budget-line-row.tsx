@@ -109,25 +109,52 @@ export function BudgetLineRow({
           onKeyDown={(event) => event.stopPropagation()}
         >
           {canEditBudget ? (
-            <InlineBudgetInput
-              value={line.budget_amount}
-              onSave={async (amount) => {
-                const parsed = parseBudgetAmount(amount);
-                if (!parsed || parsed === line.budget_amount) return;
-                await saveField({ budget_amount: parsed });
-              }}
-              inputMode="decimal"
-              ariaLabel={`Planned amount for ${line.title}`}
-              className="h-9 border-transparent bg-transparent px-2 text-right hover:border-input focus-visible:border-input"
-            />
+            <div className="relative">
+              <InlineBudgetInput
+                value={line.budget_amount}
+                onSave={async (amount) => {
+                  const parsed = parseBudgetAmount(amount);
+                  if (!parsed || parsed === line.budget_amount) return;
+                  await saveField({ budget_amount: parsed });
+                }}
+                inputMode="decimal"
+                ariaLabel={`Budget amount for ${line.title}`}
+                className="h-9 border border-input/60 bg-background px-2 text-right font-medium text-foreground hover:border-input focus-visible:border-primary"
+              />
+            </div>
           ) : (
-            <BudgetAmountCell value={totals.planned} className="text-right" />
+            <BudgetAmountCell
+              value={totals.planned}
+              className="text-right font-medium text-foreground"
+            />
           )}
         </div>
 
-        <BudgetAmountCell value={totals.committed} className="text-right" />
-        <BudgetAmountCell value={totals.actual} className="text-right" />
-        <BudgetAmountCell value={totals.variance} className="text-right" />
+        <button
+          type="button"
+          className="text-right"
+          onClick={(event) => {
+            event.stopPropagation();
+            onOpen();
+          }}
+          title="Derived from Vendor Work Orders — open details"
+        >
+          <BudgetAmountCell value={totals.committed} className="text-right" derived />
+        </button>
+        <button
+          type="button"
+          className="text-right"
+          onClick={(event) => {
+            event.stopPropagation();
+            onOpen();
+          }}
+          title="Derived from attributed spend — open details"
+        >
+          <BudgetAmountCell value={totals.actual} className="text-right" derived />
+        </button>
+        <div className="text-right" title="Budget − Actual (calculated)">
+          <BudgetAmountCell value={totals.variance} className="text-right" derived />
+        </div>
 
         <CostItemStatusBadge status={line.status} />
 
